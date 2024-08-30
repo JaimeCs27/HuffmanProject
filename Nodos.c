@@ -15,7 +15,6 @@ void insertSymbol(Node *list, Node *element, Node *head, Node *aux){
     if(!list) head = element;
     else list->next = element;
 }
-
 /*
     Function that inserts a new entry in a list
     input
@@ -52,9 +51,6 @@ void sortList(Node *head){
         insertInOrder(head, aux);
     }
 }
-
-
-
 /*
     Function that insert a element in the position that belongs
     input
@@ -79,7 +75,6 @@ void insertInOrder(Node *head, Node *element){
         insertSymbol(auxNext, element, head, aux);
     }
 }
-
 /*
     Function that release the memory of the list
     input
