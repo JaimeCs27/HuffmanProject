@@ -1,3 +1,6 @@
+#ifndef TABLA_H
+#define TABLA_H
+
 #include "Nodos.h"
 
 // Structure for the table
@@ -20,3 +23,5 @@ Table *findSymbol(Table *table, unsigned char symbol);
 
 // Function to destroy the table
 void destroyTable(Table *table);
+
+#endif

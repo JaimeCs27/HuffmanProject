@@ -1,12 +1,18 @@
 #include "Tabla.h"
+#include <stdlib.h>
+
 
 // Function to create a table recursively
 void createTable(Node *node, int nBits, int bits)
 {
-    if (node->right)
+    if (node->right){
         createTable(node->right, nBits + 1, (bits << 1) | 1);
-    if (node->left)
+    }
+        
+    if (node->left){
         createTable(node->left, nBits + 1, bits << 1);
+    }
+        
     if (!node->right && !node->left)
         insertElement(node->symbol, nBits, bits);
 }
@@ -19,11 +25,6 @@ void insertElement(unsigned char c, int nBits, int bits)
     Table *t, *p, *a;
 
     t = (Table *)malloc(sizeof(Table));
-    if (t == NULL)
-    {
-        perror("Failed to allocate memory for table element");
-        exit(EXIT_FAILURE);
-    }
     t->symbol = c;
     t->bits = bits;
     t->nBits = nBits;
@@ -78,3 +79,15 @@ void destroyTable(Table *table)
         free(temp);
     }
 }
+
+void printTable(Table *table)
+{
+    Table *temp;
+    temp = table;
+    while (temp != NULL)
+    {
+        printf("Simbolo: %c, nBits: %i, bits: %li \n", temp->symbol, temp->nBits, temp->bits);
+        temp = temp->next;
+    }
+}
+

@@ -1,11 +1,13 @@
 // Main program to compress files
-#include "Nodos.h"
 #include "Tabla.h"
+#include "Nodos.h"
 #include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+
+#define DEBUG printf("Aqui\n");
 
 void CountCharacter(Node **list, unsigned char character);
 
@@ -21,22 +23,27 @@ void processFile(const char *filePath, Node **list) {
   }
 
   unsigned char character;
-
-  while ((character = fgetc(file)) != EOF) {
+  character = fgetc(file);
+  while ( !feof(file)) {
     CountCharacter(list, character);
     fileLength++; // Incrementa la longitud por cada carácter leído
+    character = fgetc(file);
   }
-
   fclose(file);
 }
 
-void compressFile(const char* path, FILE *compress, unsigned long *dWORD, int *nBits){
-    FILE *fe = fopen(path, 'r');
+void compressFile(const char* path, FILE *compress, unsigned long int *dWORD, int *nBits){
+    
+    printf("PATH: %s\n", path);
+
+    FILE *fe = fopen(path, "r");
+    
     if(!fe){
       printf("Error al comprimir archivo\n");
       return(0);
     }
     unsigned char c;
+    
     do {
       c = fgetc(fe);
       if (feof(fe)) {
@@ -46,14 +53,14 @@ void compressFile(const char* path, FILE *compress, unsigned long *dWORD, int *n
       //look for the symbol
       t = findSymbol(table, c);
       
-      while (*nBits + t->nbits > 32) {
-          c = dWORD >> (*nBits - 8);           
+      while (*nBits + t->nBits > 32) {
+          c = *dWORD >> (*nBits - 8);           
           fwrite(&c, sizeof(char), 1, compress);    
           *nBits -= 8;                         
       }
-      *dWORD <<= t->nbits;  
+      *dWORD <<= t->nBits;  
       *dWORD |= t->bits;    
-      *nBits += t->nbits;   
+      *nBits += t->nBits;   
   } while (1);
 
   // Extract bits form dWORD
@@ -68,6 +75,7 @@ void compressFile(const char* path, FILE *compress, unsigned long *dWORD, int *n
 }
 
 void compress(const char* directoryPath, FILE *compress){
+    
     struct dirent *entry;
     DIR *dp = opendir(directoryPath);
     if (dp == NULL) {
@@ -76,15 +84,16 @@ void compress(const char* directoryPath, FILE *compress){
     }
     unsigned long dWORD = 0;  
     int nBits = 0;  
-    unsigned char c;
     while ((entry = readdir(dp))) {
-        if (entry->d_type == DT_REG) {  // Procesa todos los archivos regulares
-            char filePath[1024];
-            snprintf(filePath, sizeof(filePath), "%s/%s", directoryPath, entry->d_name);
-            
-            compressFile(filePath, list, &dWORD, &nBits);
-            //printf("Archivo: %s, Longitud: %ld caracteres\n", entry->d_name, fileLength);
+      if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
         }
+
+      char filePath[1024];
+      snprintf(filePath, sizeof(filePath), "%s/%s", directoryPath, entry->d_name);
+      
+      compressFile(filePath, compress, &dWORD, &nBits);
+      //printf("Archivo: %s, Longitud: %ld caracteres\n", entry->d_name, fileLength);
     }
 
     closedir(dp);
@@ -99,14 +108,22 @@ void processDirectory(const char *directoryPath, Node** list) {
         return;
     }
 
+    
+
     while ((entry = readdir(dp))) {
-        if (entry->d_type == DT_REG) {  // Procesa todos los archivos regulares
-            char filePath[1024];
-            snprintf(filePath, sizeof(filePath), "%s/%s", directoryPath, entry->d_name);
-            
-            processFile(filePath, list);
-            printf("Archivo: %s, Longitud: %ld caracteres\n", entry->d_name, fileLength);
+        // Ignorar las entradas "." y ".."
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
         }
+
+        char filePath[1024];
+        snprintf(filePath, sizeof(filePath), "%s/%s", directoryPath, entry->d_name);
+
+        // Llama a processFile con la ruta completa
+        processFile(filePath, list);
+
+        // Imprimir información adicional si es necesario
+        printf("Archivo: %s, Longitud: %ld caracteres\n", entry->d_name, fileLength);
     }
 
     closedir(dp);
@@ -117,49 +134,77 @@ int main(int argc, char *argv[]) {
   Node *Tree;
 
   processDirectory("Libros", &List);
-  sortList(List);
-  Tree = List;
-  createTable(Tree, 0, 0);
+  //printNode(&List);
+  sortList(&List);
 
   
 
-  FILE *compress = fopen("Libros", "wb");
-  if (!compress) {
+
+  //printNode(&List);
+  Tree = List;
+  while(Tree && Tree->next){
+    Node *newNode = (Node*)malloc(sizeof(Node));
+    newNode->symbol = ';';
+    newNode->right = Tree;
+    Tree = Tree->next;
+    newNode->left = Tree;
+    Tree = Tree->next;
+    newNode->count = newNode->left->count + newNode->right->count;
+    insertInOrder(&Tree, newNode);
+  }
+  //printNode(&Tree);
+  
+  createTable(Tree, 0, 0);
+  //printTable(table);
+
+  
+
+  FILE *compressFile = fopen("Libros.bin", "wb");
+  if (!compressFile) {
       perror("Error al crear el archivo comprimido");
       return 1;
   }
 
+    
+
   // lenght of file
-  fwrite(fileLength, sizeof(long int), 1, compress);
+  fwrite(&fileLength, sizeof(long int), 1, compressFile);
+
+  
 
   // Count elements in the table
   int countElements = 0;
   Table *t = table;  
   while (t) {
       countElements++;
-      t = t->sig;
+      t = t->next;
   }
 
+  
+
   // Write the number of elements in the table
-  fwrite(countElements, sizeof(int), 1, compress);
+  fwrite(&countElements, sizeof(int), 1, compressFile);
 
   // Save the table
   t = table; 
   while (t) { 
-      fwrite(&t->symbol, sizeof(char), 1, compress);
-      fwrite(&t->bits, sizeof(unsigned long int), 1, compress);
-      fwrite(&t->nbits, sizeof(char), 1, compress);
-      t = t->sig;
+      fwrite(&t->symbol, sizeof(char), 1, compressFile);
+      fwrite(&t->bits, sizeof(unsigned long int), 1, compressFile);
+      fwrite(&t->nBits, sizeof(char), 1, compressFile);
+      t = t->next;
   }
 
 
-  compress("libros". compress);
-  fclose(compress); //Close file
+  
+
+  //compress("Prueba", compressFile);
+
+  fclose(compressFile); //Close file
 
   
 
   freeNode(Tree); // Input: Tree, Output: None, Function: Destroys it to free memory
-  destroyTable(Table); // Input: Table, Output: None, Function: Destroys it to
+  destroyTable(table); // Input: Table, Output: None, Function: Destroys it to
                        // free memory
 
   return 0;
@@ -167,7 +212,6 @@ int main(int argc, char *argv[]) {
 
 void CountCharacter(Node **list, unsigned char character) {
   Node *current, *previous, *newNode;
-
   if (!*list) // If the list is empty, create a new node as the head
   {
     *list = (Node *)malloc(sizeof(Node)); // Create a new node
@@ -187,7 +231,14 @@ void CountCharacter(Node **list, unsigned char character) {
     if (current && current->symbol == character) {
       current->count++; // If it exists, increment its count
     } else {
-      insertNewSymbol(previous, current, *list, character);
+      newNode = (Node *)malloc(sizeof(Node));
+      newNode->symbol = character;
+      newNode->left = newNode->right = NULL;
+      newNode-> count = 1;
+      newNode->next = current;
+      if(previous) previous->next = newNode;
+      else *list = newNode;
+      //insertNewSymbol(previous, current, *list, character);
     }
   }
 }
