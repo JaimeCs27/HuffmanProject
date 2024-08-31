@@ -202,8 +202,9 @@ int main(int argc, char *argv[]) {
   fclose(compressFile); //Close file
 
   
-
+  printNode(Tree);
   freeNode(Tree); // Input: Tree, Output: None, Function: Destroys it to free memory
+  //printTable(table);
   destroyTable(table); // Input: Table, Output: None, Function: Destroys it to
                        // free memory
 
