@@ -11,8 +11,7 @@ void createTable(Node *node, int nBits, int bits)
         insertElement(node->symbol, nBits, bits);
 }
 
-// Global table variable
-Table *Table = NULL;
+Table *table;
 
 // Function to insert an element into the table
 void insertElement(unsigned char c, int nBits, int bits)
@@ -30,14 +29,14 @@ void insertElement(unsigned char c, int nBits, int bits)
     t->nBits = nBits;
 
     // If the table is empty, initialize it with the new element
-    if (Table == NULL)
+    if (table == NULL)
     {
-        Table = t;
-        Table->next = NULL;
+        table = t;
+        table->next = NULL;
     }
     else
     {
-        p = Table;
+        p = table;
         a = NULL;
         // Traverse the table to find the insertion point
         while (p && p->symbol < t->symbol)
@@ -52,7 +51,7 @@ void insertElement(unsigned char c, int nBits, int bits)
         }
         else
         {
-            Table = t;
+            table = t;
         }
     }
 }

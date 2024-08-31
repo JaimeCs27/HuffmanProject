@@ -10,8 +10,8 @@
 void CountCharacter(Node **list, unsigned char character);
 
 // Global variables
-Table *Table;
-long int fileLength = 0; 
+extern Table *table;
+long int fileLength = 0;
 
 void processFile(const char *filePath, Node **list) {
   FILE *file = fopen(filePath, "r");
@@ -28,6 +28,66 @@ void processFile(const char *filePath, Node **list) {
   }
 
   fclose(file);
+}
+
+void compressFile(const char* path, FILE *compress, unsigned long *dWORD, int *nBits){
+    FILE *fe = fopen(path, 'r');
+    if(!fe){
+      printf("Error al comprimir archivo\n");
+      return(0);
+    }
+    unsigned char c;
+    do {
+      c = fgetc(fe);
+      if (feof(fe)) {
+          break;
+      }
+
+      //look for the symbol
+      t = findSymbol(Table, c);
+      
+      while (*nBits + t->nbits > 32) {
+          c = dWORD >> (*nBits - 8);           
+          fwrite(&c, sizeof(char), 1, compress);    
+          *nBits -= 8;                         
+      }
+      *dWORD <<= t->nbits;  
+      *dWORD |= t->bits;    
+      *nBits += t->nbits;   
+  } while (1);
+
+  // Extract bits form dWORD
+  while (*nBits > 0) {
+      if (*nBits >= 8) c = *dWORD >> (*nBits - 8);
+      else c = *dWORD << (8 - *nBits);
+      fwrite(&c, sizeof(char), 1, compress);
+      *nBits -= 8;
+  }
+
+  fclose(fe);
+}
+
+void compress(const char* directoryPath, FILE *compress){
+    struct dirent *entry;
+    DIR *dp = opendir(directoryPath);
+    if (dp == NULL) {
+        perror("The directory can not be opened");
+        return;
+    }
+    unsigned long dWORD = 0;  
+    int nBits = 0;  
+    unsigned char c;
+    while ((entry = readdir(dp))) {
+        if (entry->d_type == DT_REG) {  // Procesa todos los archivos regulares
+            char filePath[1024];
+            snprintf(filePath, sizeof(filePath), "%s/%s", directoryPath, entry->d_name);
+            
+            compressFile(filePath, list, &dWORD, &nBits);
+            //printf("Archivo: %s, Longitud: %ld caracteres\n", entry->d_name, fileLength);
+        }
+    }
+
+    closedir(dp);
 }
 
 void processDirectory(const char *directoryPath, Node** list) {
@@ -63,76 +123,38 @@ int main(int argc, char *argv[]) {
 
   
 
-  FILE *fs = fopen(argv[2], "wb");
-  if (!fs) {
+  FILE *compress = fopen("Libros", "wb");
+  if (!compress) {
       perror("Error al crear el archivo comprimido");
       return 1;
   }
 
   // lenght of file
-  fwrite(&fileLength, sizeof(long int), 1, fs);
+  fwrite(fileLength, sizeof(long int), 1, compress);
 
   // Count elements in the table
   int countElements = 0;
-  Table *t = Table;  
+  Table *t = table;  
   while (t) {
       countElements++;
       t = t->sig;
   }
 
   // Write the number of elements in the table
-  fwrite(&countElements, sizeof(int), 1, fs);
+  fwrite(countElements, sizeof(int), 1, compress);
 
   // Save the table
-  t = Table; 
+  t = table; 
   while (t) { 
-      fwrite(&t->letter, sizeof(char), 1, fs);
-      fwrite(&t->bits, sizeof(unsigned long int), 1, fs);
-      fwrite(&t->nbits, sizeof(char), 1, fs);
+      fwrite(&t->letter, sizeof(char), 1, compress);
+      fwrite(&t->bits, sizeof(unsigned long int), 1, compress);
+      fwrite(&t->nbits, sizeof(char), 1, compress);
       t = t->sig;
   }
 
 
-  FILE *fe = fopen(argv[1], "r");
-  if (!fe) {
-      perror("Error al abrir el archivo de entrada");
-      fclose(fs);
-      return 1;
-  }
-
-  unsigned long dWORD = 0;  
-  int nBits = 0;  
-  unsigned char c;
-
-  do {
-      c = fgetc(fe);
-      if (feof(fe)) {
-          break;
-      }
-
-      //look for the symbol
-      t = findSymbol(Table, c);
-      
-      while (nBits + t->nbits > 32) {
-          c = dWORD >> (nBits - 8);           
-          fwrite(&c, sizeof(char), 1, fs);    
-          nBits -= 8;                         
-      }
-      dWORD <<= t->nbits;  
-      dWORD |= t->bits;    
-      nBits += t->nbits;   
-  } while (1);
-
-  // Extract bits form dWORD
-  while (nBits > 0) {
-      if (nBits >= 8) c = dWORD >> (nBits - 8);
-      else c = dWORD << (8 - nBits);
-      fwrite(&c, sizeof(char), 1, fs);
-      nBits -= 8;
-  }
-
-  fclose(fe);  // Close file
-  fclose(fs); //Close file
+  compress("libros". compress);
+  fclose(compress); //Close file
 
   
 
