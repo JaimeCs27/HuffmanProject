@@ -42,9 +42,9 @@ void compressFile(const char* path, FILE *compress, unsigned long *dWORD, int *n
       if (feof(fe)) {
           break;
       }
-
+      Table *t;
       //look for the symbol
-      t = findSymbol(Table, c);
+      t = findSymbol(table, c);
       
       while (*nBits + t->nbits > 32) {
           c = dWORD >> (*nBits - 8);           
@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
   // Save the table
   t = table; 
   while (t) { 
-      fwrite(&t->letter, sizeof(char), 1, compress);
+      fwrite(&t->symbol, sizeof(char), 1, compress);
       fwrite(&t->bits, sizeof(unsigned long int), 1, compress);
       fwrite(&t->nbits, sizeof(char), 1, compress);
       t = t->sig;
@@ -158,7 +158,7 @@ int main(int argc, char *argv[]) {
 
   
 
-  destroyTree(Tree); // Input: Tree, Output: None, Function: Destroys it to free memory
+  freeNode(Tree); // Input: Tree, Output: None, Function: Destroys it to free memory
   destroyTable(Table); // Input: Table, Output: None, Function: Destroys it to
                        // free memory
 
@@ -171,21 +171,21 @@ void CountCharacter(Node **list, unsigned char character) {
   if (!*list) // If the list is empty, create a new node as the head
   {
     *list = (Node *)malloc(sizeof(Node)); // Create a new node
-    (*list)->letter = character;                  // Assign the character
-    (*list)->frequency = 1; // Initialize the frequency to 1
-    (*list)->next = (*list)->zero = (*list)->one = NULL; // Initialize pointers
+    (*list)->symbol = character;                  // Assign the character
+    (*list)->count = 1; // Initialize the count to 1
+    (*list)->next = (*list)->left = (*list)->right = NULL; // Initialize pointers
   } else {
     // Find the correct position in the list for the character
     current = *list;
     previous = NULL;
-    while (current && current->letter < character) {
+    while (current && current->symbol < character) {
       previous = current;      // Keep reference to the previous node
       current = current->next; // Move to the next node
     }
 
     // Check if the character already exists in the list
-    if (current && current->letter == character) {
-      current->frequency++; // If it exists, increment its frequency
+    if (current && current->symbol == character) {
+      current->count++; // If it exists, increment its count
     } else {
       insertNewSymbol(previous, current, *list, character);
     }
