@@ -1,3 +1,5 @@
+#include "Nodos.h"
+
 // Structure for the table
 typedef struct Table
 {

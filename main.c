@@ -6,18 +6,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct NodeType {
-  unsigned char letter;
-  int frequency;
-  struct NodeType *next, *zero, *one;
-} NodeType;
 
-void CountCharacter(NodeType **list, unsigned char character);
+void CountCharacter(Node **list, unsigned char character);
 
 // Global variables
 Table *Table;
+long int fileLength = 0; 
 
-void processFile(const char *filePath, NodeType **list, long *fileLength) {
+void processFile(const char *filePath, Node **list) {
   FILE *file = fopen(filePath, "r");
   if (!file) {
     printf("Error al abrir el archivo %s\n", filePath);
@@ -25,17 +21,16 @@ void processFile(const char *filePath, NodeType **list, long *fileLength) {
   }
 
   unsigned char character;
-  *fileLength = 0; // Inicializa la longitud del archivo
 
   while ((character = fgetc(file)) != EOF) {
     CountCharacter(list, character);
-    (*fileLength)++; // Incrementa la longitud por cada carácter leído
+    fileLength++; // Incrementa la longitud por cada carácter leído
   }
 
   fclose(file);
 }
 
-void processDirectory(const char *directoryPath, NodeType** list) {
+void processDirectory(const char *directoryPath, Node** list) {
     struct dirent *entry;
     DIR *dp = opendir(directoryPath);
 
@@ -48,8 +43,8 @@ void processDirectory(const char *directoryPath, NodeType** list) {
         if (entry->d_type == DT_REG) {  // Procesa todos los archivos regulares
             char filePath[1024];
             snprintf(filePath, sizeof(filePath), "%s/%s", directoryPath, entry->d_name);
-            long fileLength = 0; 
-            processFile(filePath, list, &fileLength);
+            
+            processFile(filePath, list);
             printf("Archivo: %s, Longitud: %ld caracteres\n", entry->d_name, fileLength);
         }
     }
@@ -58,13 +53,13 @@ void processDirectory(const char *directoryPath, NodeType** list) {
 }
 
 int main(int argc, char *argv[]) {
-  NodeType *List;
-  NodeType *Tree;
+  Node *List;
+  Node *Tree;
 
   processDirectory("Libros", &List);
   sortList(List);
-  Tree = createTree(List);
-  Table = createTable(Tree);
+  Tree = List;
+  createTable(Tree, 0, 0);
 
   
 
@@ -148,12 +143,12 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
-void CountCharacter(NodeType **list, unsigned char character) {
-  NodeType *current, *previous, *newNode;
+void CountCharacter(Node **list, unsigned char character) {
+  Node *current, *previous, *newNode;
 
   if (!*list) // If the list is empty, create a new node as the head
   {
-    *list = (NodeType *)malloc(sizeof(NodeType)); // Create a new node
+    *list = (Node *)malloc(sizeof(Node)); // Create a new node
     (*list)->letter = character;                  // Assign the character
     (*list)->frequency = 1; // Initialize the frequency to 1
     (*list)->next = (*list)->zero = (*list)->one = NULL; // Initialize pointers
@@ -170,18 +165,7 @@ void CountCharacter(NodeType **list, unsigned char character) {
     if (current && current->letter == character) {
       current->frequency++; // If it exists, increment its frequency
     } else {
-      // If it doesn't exist, create a new node for the character
-      newNode = (NodeType *)malloc(sizeof(NodeType));
-      newNode->letter = character;
-      newNode->frequency = 1;
-      newNode->zero = newNode->one = NULL;
-      newNode->next = current; // Link the new node in the list
-
-      if (previous)
-        previous->next =
-            newNode; // If not the first, link with the previous node
-      else
-        *list = newNode; // If it's the first, update the list head
+      insertNewSymbol(previous, current, *list, character);
     }
   }
 }
