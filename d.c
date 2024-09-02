@@ -32,17 +32,17 @@ int main(int argc, char *argv[])
    unsigned char a;
    int i, j;
 
-   if(argc < 3)
-   {
-      printf("Usar:\n%s <fichero_entrada> <fichero_salida>\n", argv[0]);
-      return 1;
-   }
+   // if(argc < 3)
+   // {
+   //    printf("Usar:\n%s <fichero_entrada> <fichero_salida>\n", argv[0]);
+   //    return 1;
+   // }
 
    /* Crear un arbol con la información de la tabla */
    Arbol = (tipoNodo *)malloc(sizeof(tipoNodo)); /* un nodo nuevo */
    Arbol->letra = 0;
    Arbol->uno = Arbol->cero = NULL;
-   fe = fopen(argv[1], "rb");
+   fe = fopen("Libros.bin", "rb");
    fread(&Longitud, sizeof(long int), 1, fe); /* Lee el número de caracteres */
    fread(&nElementos, sizeof(int), 1, fe); /* Lee el número de elementos */
    for(i = 0; i < nElementos; i++) /* Leer todos los elementos */
@@ -99,25 +99,25 @@ int main(int argc, char *argv[])
     while(1){
         fs = fopen(filePath, "w");
         
-        /* Lee los primeros cuatro bytes en la dobel palabra bits */
+        /* Lee los primeros cuatro bytes en la doble palabra bits */
         bits = 0;
         fread(&a, sizeof(char), 1, fe);
         bits |= a;
-        bits <<= 8;
-        fread(&a, sizeof(char), 1, fe);
-        bits |= a;
-        bits <<= 8;
-        fread(&a, sizeof(char), 1, fe);
-        bits |= a;
-        bits <<= 8;
-        fread(&a, sizeof(char), 1, fe);
-        bits |= a;
+        //bits <<= 8;
+      //   fread(&a, sizeof(char), 1, fe);
+      //   bits |= a;
+      //   bits <<= 8;
+      //   fread(&a, sizeof(char), 1, fe);
+      //   bits |= a;
+      //   bits <<= 8;
+      //   fread(&a, sizeof(char), 1, fe);
+      //   bits |= a;
         j = 0; /* Cada 8 bits leemos otro byte */
         q = Arbol;
         
         /* Bucle */
         do {
-            if(bits & 0x80000000) q = q->uno; else q = q->cero; /* Rama adecuada */
+            if(bits & 0x80) q = q->uno; else q = q->cero; /* Rama adecuada */
             bits <<= 1;           /* Siguiente bit */
             j++;
             if(8 == j)            /* Cada 8 bits */
