@@ -357,13 +357,8 @@ void compress(const char* directoryPath, FILE *compress){
         cant++;
       }
       unsigned int a = characters[indexC];
-<<<<<<< HEAD
       //printf("%i entry\n", cant);
       //printf("compress: %s\n", entry->d_name);
-=======
-      // printf("%i entry\n", cant);
-      // printf("compress: %s\n", entry->d_name);
->>>>>>> sos
       fwrite(&cant, sizeof(int), 1, compress);
       fwrite(&entry->d_name, sizeof(char[cant]), 1, compress);
       fwrite(&a, sizeof(unsigned int), 1, compress);
