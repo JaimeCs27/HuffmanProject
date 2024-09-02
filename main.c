@@ -91,11 +91,12 @@ void compress(const char* directoryPath, FILE *compress){
         perror("The directory can not be opened");
         return;
     }
-    unsigned long dWORD = 0;  
-    int nBits = 0;
+    
     indexC = 0;
     
     while ((entry = readdir(dp))) {
+      unsigned long dWORD = 0;  
+      int nBits = 0;
       if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             continue;
         }
@@ -110,9 +111,9 @@ void compress(const char* directoryPath, FILE *compress){
       unsigned int a = characters[indexC];
       //printf("%i entry\n", cant);
       //printf("compress: %s\n", entry->d_name);
-      //fwrite(&cant, sizeof(int), 1, compress);
-      //fwrite(&entry->d_name, sizeof(char[cant]), 1, compress);
-      //fwrite(&a, sizeof(unsigned int), 1, compress);
+      fwrite(&cant, sizeof(int), 1, compress);
+      fwrite(&entry->d_name, sizeof(char[cant]), 1, compress);
+      fwrite(&a, sizeof(unsigned int), 1, compress);
       compressFile(filePath, compress, &dWORD, &nBits);
       indexC++;
       //printf("Archivo: %s, Longitud: %ld caracteres\n", entry->d_name, fileLength);
