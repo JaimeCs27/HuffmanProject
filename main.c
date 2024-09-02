@@ -9,6 +9,8 @@
 
 #define DEBUG printf("Aqui\n");
 
+unsigned int characters[97];
+int indexC = 0;
 void CountCharacter(Node **list, unsigned char character);
 
 // Global variables
@@ -23,21 +25,28 @@ void processFile(const char *filePath, Node **list) {
   }
 
   unsigned char character;
-  character = fgetc(file);
-  while ( !feof(file)) {
-    CountCharacter(list, character);
-    fileLength++; // Incrementa la longitud por cada carácter leído
+  unsigned int cant = 0;
+  do{
     character = fgetc(file);
-  }
+    if(feof(file))
+      break;
+    fileLength++; // Incrementa la longitud por cada carácter leído
+    cant++;
+    CountCharacter(list, character);
+  }while (1);
+  characters[indexC] = cant;
+  indexC++;
   fclose(file);
 }
 
 void compressFile(const char* path, FILE *compress, unsigned long int *dWORD, int *nBits){
     
-    printf("PATH: %s\n", path);
+    //printf("PATH: %s\n", path);
 
     FILE *fe = fopen(path, "r");
     
+
+
     if(!fe){
       printf("Error al comprimir archivo\n");
       return(0);
@@ -83,19 +92,31 @@ void compress(const char* directoryPath, FILE *compress){
         return;
     }
     unsigned long dWORD = 0;  
-    int nBits = 0;  
+    int nBits = 0;
+    indexC = 0;
+    
     while ((entry = readdir(dp))) {
       if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             continue;
         }
-
+      int cant = 0;
       char filePath[1024];
       snprintf(filePath, sizeof(filePath), "%s/%s", directoryPath, entry->d_name);
-      
+      while(1){
+        if(entry->d_name[cant] == '\0')
+          break;
+        cant++;
+      }
+      unsigned int a = characters[indexC];
+      //printf("%i entry\n", cant);
+      //printf("compress: %s\n", entry->d_name);
+      //fwrite(&cant, sizeof(int), 1, compress);
+      //fwrite(&entry->d_name, sizeof(char[cant]), 1, compress);
+      //fwrite(&a, sizeof(unsigned int), 1, compress);
       compressFile(filePath, compress, &dWORD, &nBits);
+      indexC++;
       //printf("Archivo: %s, Longitud: %ld caracteres\n", entry->d_name, fileLength);
     }
-
     closedir(dp);
 }
 
@@ -115,15 +136,14 @@ void processDirectory(const char *directoryPath, Node** list) {
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             continue;
         }
-
+        
         char filePath[1024];
         snprintf(filePath, sizeof(filePath), "%s/%s", directoryPath, entry->d_name);
 
         // Llama a processFile con la ruta completa
         processFile(filePath, list);
 
-        // Imprimir información adicional si es necesario
-        printf("Archivo: %s, Longitud: %ld caracteres\n", entry->d_name, fileLength);
+        //printf("Process: %s\n", entry->d_name);
     }
 
     closedir(dp);
@@ -134,13 +154,9 @@ int main(int argc, char *argv[]) {
   Node *Tree;
 
   processDirectory("Libros", &List);
-  //printNode(&List);
   sortList(&List);
 
   
-
-
-  //printNode(&List);
   Tree = List;
   while(Tree && Tree->next){
     Node *newNode = (Node*)malloc(sizeof(Node));
@@ -152,10 +168,8 @@ int main(int argc, char *argv[]) {
     newNode->count = newNode->left->count + newNode->right->count;
     insertInOrder(&Tree, newNode);
   }
-  //printNode(&Tree);
-  
+
   createTable(Tree, 0, 0);
-  //printTable(table);
 
   
 
@@ -180,7 +194,7 @@ int main(int argc, char *argv[]) {
       t = t->next;
   }
 
-  
+  printf("elementos: %i\n", countElements);
 
   // Write the number of elements in the table
   fwrite(&countElements, sizeof(int), 1, compressFile);
@@ -197,7 +211,7 @@ int main(int argc, char *argv[]) {
 
   
 
-  //compress("Prueba", compressFile);
+  compress("Libros", compressFile);
 
   fclose(compressFile); //Close file
 
