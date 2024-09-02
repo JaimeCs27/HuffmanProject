@@ -85,6 +85,8 @@ int main(int argc, char *argv[])
    }
    int cant;
    char filePath[1024];
+   for (int i = 0; i < 1024; i ++)
+      filePath[i] = '\0';
    unsigned int cantBook;
    fread(&cant, sizeof(int), 1, fe); /* Lee el número de caracteres */
    fread(&filePath, sizeof(char[cant]), 1, fe);
