@@ -48,8 +48,8 @@ void decompress(Node *current, Node *newNode, Node *tree, FILE *fi, long int cha
 
     while(1){
         snprintf(fullPath, sizeof(fullPath), "%s/%s", directory, filePath);
-        printf("%s\n", filePath);
-        FILE *fs = fopen(filePath, "w");
+        //printf("%s\n", filePath);
+        FILE *fs = fopen(fullPath, "w");
         
         bits = 0;
         fread(&temp, sizeof(char), 1, fi);
@@ -260,9 +260,7 @@ int main(int argc, char* argv[]){
     }
     createTree(current, newNode, tree, fi, elements);
     decompress(current, newNode, tree, fi, characters, directory);
-    free(directory);
     fclose(fi);
-    
     deleteTree(tree);
 }
 

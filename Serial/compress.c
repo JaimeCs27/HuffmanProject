@@ -39,43 +39,47 @@ void processFile(const char *filePath, Node **list) {
   fclose(file);
 }
 
-void compressFile(const char* path, FILE *compress, unsigned long int *dWORD, int *nBits){
+void compressFile(const char* path, FILE *compress, unsigned char *byte, int *nBits){
     //printf("PATH: %s\n", path);
     FILE *fe = fopen(path, "r");
     if(!fe){
       printf("Error al comprimir archivo\n");
       return;
     }
-    unsigned char c;
     
-  do {
-      c = fgetc(fe);
-      if (feof(fe)) {
-          break;
-      }
-      Table *t;
-      //look for the symbol
-      t = findSymbol(table, c);
-      
-      while (*nBits + t->nBits > 32) {
-          c = *dWORD >> (*nBits - 8);           
-          fwrite(&c, sizeof(char), 1, compress);    
-          *nBits -= 8;                         
-      }
-      *dWORD <<= t->nBits;
-      *dWORD |= t->bits;
-      *nBits += t->nBits;
-  } while (1);
+  int c;
+    while ((c = fgetc(fe)) != EOF) {
+        // Utilizar la función findSymbol para buscar el símbolo en la tabla de Huffman
+        Table *node = findSymbol(table, (unsigned char)c);
 
-  // Extract bits form dWORD
-  while (*nBits > 0) {
-      if (*nBits >= 8) 
-        c = *dWORD >> (*nBits - 8);
-      else 
-        c = *dWORD << (8 - *nBits);
-      fwrite(&c, sizeof(char), 1, compress);
-      *nBits -= 8;
-  }
+        if (node == NULL) {
+            fprintf(stderr, "Símbolo no encontrado en la tabla: %c\n", c);
+            continue;
+        }
+
+        // Agregar los bits al byte actual
+        for (int i = node->nBits - 1; i >= 0; i--) {
+            // Extraer el bit en la posición i
+            unsigned char bit = (node->bits >> i) & 1;
+
+            // Colocar el bit en la posición correspondiente en el byte
+            *byte = (*byte << 1) | bit;
+            (*nBits)++;
+
+            // Si hemos completado 8 bits, escribir el byte en el archivo
+            if (*nBits == 8) {
+                fwrite(byte, sizeof(unsigned char), 1, compress);
+                *byte = 0;
+                *nBits = 0;
+            }
+        }
+    }
+
+    // Escribir cualquier bit restante en el byte
+    if (*nBits > 0) {
+        *byte <<= (8 - *nBits);  // Desplazar los bits restantes a la izquierda
+        fwrite(byte, sizeof(unsigned char), 1, compress);
+    }
 
   fclose(fe);
 }
@@ -92,7 +96,7 @@ void compress(const char* directoryPath, FILE *compress){
     indexC = 0;
     
     while ((entry = readdir(dp))) {
-      unsigned long dWORD = 0;  
+      unsigned char dWORD = 0;  
       int nBits = 0;
       if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             continue;
