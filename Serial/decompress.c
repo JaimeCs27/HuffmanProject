@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <time.h>
 
 #define DEBUG printf("Aqui\n");
 
@@ -196,20 +197,6 @@ int main(int argc, char* argv[]){
         return 1;
     }
     fileName = argv[1];
-
-    tree = (Node *)malloc(sizeof(Node));
-    tree->symbol = 0;
-    tree->right = tree->left = NULL;
-
-    FILE *fi = fopen(fileName, "rb");
-    fread(&characters, sizeof(long int), 1, fi);
-    fread(&elements, sizeof(int), 1, fi);
-    
-    
-
-    Node *current = NULL;
-    Node *newNode = NULL;
-
     struct stat st = {0};
     size_t len;
     // Asignar el nombre del directorio desde los argumentos
@@ -258,9 +245,29 @@ int main(int argc, char* argv[]){
     } else {
         perror("Error al crear el directorio");
     }
+    clock_t start, end;
+    double cpuTimeUsed;
+    start = clock();
+    tree = (Node *)malloc(sizeof(Node));
+    tree->symbol = 0;
+    tree->right = tree->left = NULL;
+
+    FILE *fi = fopen(fileName, "rb");
+    fread(&characters, sizeof(long int), 1, fi);
+    fread(&elements, sizeof(int), 1, fi);
+    
+    
+
+    Node *current = NULL;
+    Node *newNode = NULL;
+
+    
     createTree(current, newNode, tree, fi, elements);
     decompress(current, newNode, tree, fi, characters, directory);
     fclose(fi);
     deleteTree(tree);
+    end = clock();
+    cpuTimeUsed = ((double) (end - start)) / CLOCKS_PER_SEC;
+    printf("La descompresion de huffman en Serial duro: %f segundos\n", cpuTimeUsed);
 }
 

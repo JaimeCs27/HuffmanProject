@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #define DEBUG printf("Aqui\n");
 
@@ -177,6 +178,9 @@ int main(int argc, char *argv[]) {
   }
   directory = argv[1];
   
+  clock_t start, end;
+  double cpuTimeUsed;
+  start = clock();
   processDirectory(directory, &List);
   sortList(&List);
 
@@ -233,13 +237,15 @@ int main(int argc, char *argv[]) {
   compress(directory, compressFile);
 
   fclose(compressFile); //Close file
-
   
   //printNode(Tree);
   freeNode(Tree); // Input: Tree, Output: None, Function: Destroys it to free memory
   //printTable(table);
   destroyTable(table); // Input: Table, Output: None, Function: Destroys it to
                        // free memory
+  end = clock();
+  cpuTimeUsed = ((double) (end - start)) / CLOCKS_PER_SEC;
+  printf("La compresion de huffman en Serial duro: %f segundos\n", cpuTimeUsed);
 
   return 0;
 }
