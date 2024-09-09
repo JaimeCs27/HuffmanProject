@@ -46,7 +46,8 @@ void decompress(Node *current, Node *newNode, Node *tree, FILE *fi, long int cha
     unsigned long int bits = 0;
     unsigned char temp = 0;
     int j;
-
+    int cuenta = 0;
+    //printf("Son %li caracteres\n", characters);
     while(1){
         snprintf(fullPath, sizeof(fullPath), "%s/%s", directory, filePath);
         //printf("%s\n", filePath);
@@ -81,8 +82,10 @@ void decompress(Node *current, Node *newNode, Node *tree, FILE *fi, long int cha
             }                                
             
         } while(cantBook);
-        if(characters <= 0)
+        if(characters <= 0){
+            
             break;
+        }
         cantBook = 0;
         cant = 0;
         fread(&cant, sizeof(int), 1, fi);
@@ -91,7 +94,10 @@ void decompress(Node *current, Node *newNode, Node *tree, FILE *fi, long int cha
         fread(&filePath, sizeof(char[cant]), 1, fi);
         fread(&cantBook, sizeof(unsigned int), 1, fi);
         temp = 0;
-        fclose(fs); 
+        fclose(fs);
+        cuenta++;
+        //printf("Nombre: %s\n", filePath);
+        //printf("faltan %li caracteres\n", characters);
     }
 }
 

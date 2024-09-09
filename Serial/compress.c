@@ -48,7 +48,7 @@ void compressFile(const char* path, FILE *compress, unsigned char *byte, int *nB
       return;
     }
     
-  int c;
+    int c;
     while ((c = fgetc(fe)) != EOF) {
         // Utilizar la función findSymbol para buscar el símbolo en la tabla de Huffman
         Table *node = findSymbol(table, (unsigned char)c);
@@ -97,7 +97,7 @@ void compress(const char* directoryPath, FILE *compress){
     indexC = 0;
     
     while ((entry = readdir(dp))) {
-      unsigned char dWORD = 0;  
+      unsigned char byte = 0;  
       int nBits = 0;
       if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             continue;
@@ -111,14 +111,11 @@ void compress(const char* directoryPath, FILE *compress){
         cant++;
       }
       unsigned int a = characters[indexC];
-      //printf("%i entry\n", cant);
-      //printf("compress: %s\n", entry->d_name);
       fwrite(&cant, sizeof(int), 1, compress);
       fwrite(&entry->d_name, sizeof(char[cant]), 1, compress);
       fwrite(&a, sizeof(unsigned int), 1, compress);
-      compressFile(filePath, compress, &dWORD, &nBits);
+      compressFile(filePath, compress, &byte, &nBits);
       indexC++;
-      //printf("Archivo: %s, Longitud: %ld caracteres\n", entry->d_name, fileLength);
     }
     closedir(dp);
 }
@@ -181,6 +178,7 @@ int main(int argc, char *argv[]) {
   clock_t start, end;
   double cpuTimeUsed;
   start = clock();
+  
   processDirectory(directory, &List);
   sortList(&List);
 
@@ -278,7 +276,6 @@ void CountCharacter(Node **list, unsigned char character) {
       newNode->next = current;
       if(previous) previous->next = newNode;
       else *list = newNode;
-      //insertNewSymbol(previous, current, *list, character);
     }
   }
 }
