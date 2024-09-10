@@ -13,19 +13,50 @@ En este proyecto se implementarón tres enfoques, un algoritmo Serial, uno Paral
 Para la creación del arbol binario se creo un archivo Nodo.h que contiene lo siguiente:
 ```c
 typedef struct Node {
-    struct Node *next; // Puntero al siguiente nodo en la lista
-    struct Node *left; // Puntero al lado izquierdo del arbol binario, su valor es de 0
-    struct Node *right; // Puntero al lado derecho del arbol binario, su valor es de 1
-    unsigned char symbol; // Caractér almacenado
-    int count; // Frecuencia en que aparece el caractér
+    struct Node *next;      // Puntero al siguiente nodo en la lista
+    struct Node *left;      // Puntero al lado izquierdo del arbol binario, su valor es de 0
+    struct Node *right;     // Puntero al lado derecho del arbol binario, su valor es de 1
+    unsigned char symbol;   // Caractér almacenado
+    int count;              // Frecuencia en que aparece el caractér
 }Node;
 
-void insertNewSymbol(Node *actual, Node *next, Node *List, unsigned char c);
 void insertSymbol(Node *List, Node *element, Node *head, Node *aux);
 void sortList(Node **head);
 void insertInOrder(Node **head, Node *element);
 void freeNode(Node *head);
 void printNode(Node **head);
 ```
+
+Tambien se utilizará un archivo Tabla.h que se utilizará para la creación de la tabla de huffman, contiene lo siguiente:
+```c
+// Structure for the table
+typedef struct Table
+{
+    unsigned char symbol;   // Stores the character in the table
+    unsigned char nBits;    // Number of bits stored
+    unsigned long int bits; // Bit encoding
+    struct Table *next;     // Pointer to the next element in the table
+} Table;
+
+// Function to create a table recursively
+void createTable(Node *node, int nBits, int bits);
+
+// Function to insert an element into the table
+void insertElement(unsigned char c, int nBits, int bits);
+
+// Function to find a symbol in the table
+Table *findSymbol(Table *table, unsigned char symbol);
+
+// Function to destroy the table
+void destroyTable(Table *table);
+```
+
+Ahora se analizará cada método diferente y como se implementó.
+
+### Serial
+El algoritmo serial, sería el siguiente:
+- Primero procesa el directorio dado y crea una lista enlazada que contiene los símbolos utilizados en todos los libros y la frecuencia de cada símbolo.
+- Segundo la lista creada se ordena de menor a mayor conforme a su frecuencia.
+- Tercero se 
 
 

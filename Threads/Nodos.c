@@ -19,33 +19,6 @@ void insertSymbol(Node *list, Node *element, Node *head, Node *aux){
     if(!list) head = element;
     else list->next = element;
 }
-/*
-    Function that inserts a new entry in a list
-    input
-    -actual: Node * type, this is the actual position in the list
-    -next: Node * type, this is the next position in the list
-    -List" Node * type, this is the head of the list
-    -c: unsigned char, this is the symbol that we are going to insert
-    output
-    none
-*/
-void insertNewSymbol(Node *actual, Node *next, Node *List, unsigned char c){
-    Node *newNode = (Node *)malloc(sizeof(Node));
-    newNode->symbol = c;
-    newNode->left = newNode->right = NULL;
-    newNode-> count = 1;
-    insertSymbol(actual, newNode, List, next);
-
-    
-}
-
-/*
-    Function that sort a linklist from smallest to largest
-    input
-    -head: Node * type, this is the head of the list
-    output
-    none
-*/
 
 /*
     Function that release the memory of the list
@@ -74,9 +47,13 @@ void printNode(Node **head){
     }
 }
 
-
-
-
+/*
+    Function that sort a linklist from smallest to largest
+    input
+    -head: Node * type, this is the head of the list
+    output
+    none
+*/
 
 void sortList(Node **head){
     Node *listAux;
