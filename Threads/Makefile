@@ -14,7 +14,7 @@ COMPRESS_TARGET = compress
 DECOMPRESS_TARGET = decompress
 
 # Regla principal para compilar todo
-all: $(COMPRESS_TARGET) #$(DECOMPRESS_TARGET)
+all: $(COMPRESS_TARGET) $(DECOMPRESS_TARGET)
 
 # Regla para crear el ejecutable de compress
 $(COMPRESS_TARGET): $(COMPRESS_OBJS)
