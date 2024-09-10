@@ -70,7 +70,7 @@ void *compressFile(void *arg) {
     //printf("%s\n", data->filePath);
     FILE *inputFile = fopen(data->filePath, "r");
     if (!inputFile) {
-        perror("Error al abrir el archivo");
+        perror("Error opening the file");
         return NULL;
     }
     
@@ -97,7 +97,6 @@ void *compressFile(void *arg) {
     fwrite(&fileData.compressedSize, sizeof(size_t), 1, data->outputFile);  // Guardar el tamaño comprimido
     fwrite(fileData.compressedData, sizeof(unsigned char), fileData.compressedSize, data->outputFile); // :p
     pthread_mutex_unlock(data->fileMutex);
-
     // Liberar el buffer de datos comprimidos
     free(fileData.compressedData);
 
@@ -107,7 +106,7 @@ void *compressFile(void *arg) {
 void compressFileToBuffer(const char* path, unsigned char **compressedData, size_t *compressedSize) {
     FILE *fe = fopen(path, "r");
     if (!fe) {
-        printf("Error al comprimir archivo\n");
+        printf("Error compressing the file\n");
         return;
     }
     // Buffer dinámico para almacenar los datos comprimidos
@@ -124,7 +123,7 @@ void compressFileToBuffer(const char* path, unsigned char **compressedData, size
         Table *node = findSymbol(table, (unsigned char)c);
 
         if (node == NULL) {
-            fprintf(stderr, "Símbolo no encontrado en la tabla: %c\n", c);
+            fprintf(stderr, "Symbol not found in the table: %c\n", c);
             continue;
         }
 
@@ -214,7 +213,7 @@ void compress(const char* directoryPath, FILE *compress) {
 void processFile(const char *filePath, Node **list) {
   FILE *file = fopen(filePath, "r");
   if (!file) {
-    printf("Error al abrir el archivo %s\n", filePath);
+    printf("Error opening the file %s\n", filePath);
     return;
   }
 
@@ -262,6 +261,39 @@ void processDirectory(const char *directoryPath, Node** list) {
     closedir(dp);
 }
 
+void CountCharacter(Node **list, unsigned char character) {
+  Node *current, *previous, *newNode;
+  if (!*list) // If the list is empty, create a new node as the head
+  {
+    *list = (Node *)malloc(sizeof(Node)); // Create a new node
+    (*list)->symbol = character;                  // Assign the character
+    (*list)->count = 1; // Initialize the count to 1
+    (*list)->next = (*list)->left = (*list)->right = NULL; // Initialize pointers
+  } else {
+    // Find the correct position in the list for the character
+    current = *list;
+    previous = NULL;
+    while (current && current->symbol < character) {
+      previous = current;      // Keep reference to the previous node
+      current = current->next; // Move to the next node
+    }
+
+    // Check if the character already exists in the list
+    if (current && current->symbol == character) {
+      current->count++; // If it exists, increment its count
+    } else {
+      newNode = (Node *)malloc(sizeof(Node));
+      newNode->symbol = character;
+      newNode->left = newNode->right = NULL;
+      newNode-> count = 1;
+      newNode->next = current;
+      if(previous) previous->next = newNode;
+      else *list = newNode;
+    }
+  }
+}
+
+
 int main(int argc, char *argv[]){
 
     Node *List;
@@ -297,7 +329,7 @@ int main(int argc, char *argv[]){
     clock_t ti, a;
     ti = clock();
     cpuTimeUsed = ((double) (ti - start)) / CLOCKS_PER_SEC;
-    printf("Process file dura: %f segundos\n", cpuTimeUsed);
+    printf("Process file took: %f seconds\n", cpuTimeUsed);
     sortList(&List);
 
   
@@ -319,7 +351,7 @@ int main(int argc, char *argv[]){
 
     FILE *compressFile = fopen(fileName, "wb");
     if (!compressFile) {
-        perror("Error al crear el archivo comprimido");
+        perror("Error creating the compressed file");
         return 1;
     }
 
@@ -347,7 +379,7 @@ int main(int argc, char *argv[]){
 
     ti = clock();
     cpuTimeUsed = ((double) (ti - a)) / CLOCKS_PER_SEC;
-    printf("Compress dura: %f segundos\n", cpuTimeUsed);
+    printf("Compress took: %f seconds\n", cpuTimeUsed);
 
 
     fclose(compressFile); //Close file
@@ -359,39 +391,8 @@ int main(int argc, char *argv[]){
 
     end = clock();
     cpuTimeUsed = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("La compresion de huffman en Serial duro: %f segundos\n", cpuTimeUsed);
+    printf("Concurrent huffman compression took: %f seconds\n", cpuTimeUsed);
 
     return 0;
 
-}
-void CountCharacter(Node **list, unsigned char character) {
-  Node *current, *previous, *newNode;
-  if (!*list) // If the list is empty, create a new node as the head
-  {
-    *list = (Node *)malloc(sizeof(Node)); // Create a new node
-    (*list)->symbol = character;                  // Assign the character
-    (*list)->count = 1; // Initialize the count to 1
-    (*list)->next = (*list)->left = (*list)->right = NULL; // Initialize pointers
-  } else {
-    // Find the correct position in the list for the character
-    current = *list;
-    previous = NULL;
-    while (current && current->symbol < character) {
-      previous = current;      // Keep reference to the previous node
-      current = current->next; // Move to the next node
-    }
-
-    // Check if the character already exists in the list
-    if (current && current->symbol == character) {
-      current->count++; // If it exists, increment its count
-    } else {
-      newNode = (Node *)malloc(sizeof(Node));
-      newNode->symbol = character;
-      newNode->left = newNode->right = NULL;
-      newNode-> count = 1;
-      newNode->next = current;
-      if(previous) previous->next = newNode;
-      else *list = newNode;
-    }
-  }
 }

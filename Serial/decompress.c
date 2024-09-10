@@ -147,7 +147,7 @@ void removeDirectoryContents(const char *path) {
     char filePath[1024];
 
     if (!d) {
-        perror("Error al abrir el directorio");
+        perror("Error opening the directory");
         return;
     }
 
@@ -211,23 +211,23 @@ int main(int argc, char* argv[]){
         // Verificar si el directorio ya existe
         if (stat(directory, &st) == 0 && S_ISDIR(st.st_mode)) {
             char respuesta[10];
-            printf("El directorio '%s' ya existe. ¿Deseas reemplazarlo? (s/n): ", directory);
+            printf("The directory '%s' already exists. ¿Do you want to replace it? (s/n): ", directory);
             fgets(respuesta, sizeof(respuesta), stdin);
 
             // Verificar la respuesta del usuario
             if (respuesta[0] == 's' || respuesta[0] == 'S') {
                 // Eliminar el directorio existente
                 if (rmdir(directory) == 0) {
-                    printf("Directorio '%s' eliminado.\n", directory);
+                    printf("Directory '%s' deleted.\n", directory);
                 } else {
-                    perror("Error al eliminar el directorio");
+                    perror("Error deleting the directory");
                     free(directory);
                     return 1;
                 }
                 break;  // Salir del bucle si se decide reemplazar
             } else {
                 // Pedir al usuario un nuevo nombre de directorio
-                printf("Introduce un nuevo nombre para el directorio: ");
+                printf("Enter a new name for the directory: ");
                 fgets(respuesta, sizeof(respuesta), stdin);
                 respuesta[strcspn(respuesta, "\n")] = 0;  // Eliminar el salto de línea al final
 
@@ -235,7 +235,7 @@ int main(int argc, char* argv[]){
                 len = strlen(respuesta);
                 directory = (char *)realloc(directory, len + 1);
                 if (directory == NULL) {
-                    perror("Error al asignar memoria");
+                    perror("Error assigning memory");
                     return 1;
                 }
                 strcpy(directory, respuesta);
@@ -247,9 +247,9 @@ int main(int argc, char* argv[]){
 
     // Crear el nuevo directorio
     if (mkdir(directory, 0755) == 0) {
-        printf("Directorio creado exitosamente: %s\n", directory);
+        printf("Directory succesfully created: %s\n", directory);
     } else {
-        perror("Error al crear el directorio");
+        perror("Error creating the directory");
     }
     clock_t start, end;
     double cpuTimeUsed;
@@ -274,6 +274,6 @@ int main(int argc, char* argv[]){
     deleteTree(tree);
     end = clock();
     cpuTimeUsed = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("La descompresion de huffman en Serial duro: %f segundos\n", cpuTimeUsed);
+    printf("Serial huffman compression took: %f seconds\n", cpuTimeUsed);
 }
 

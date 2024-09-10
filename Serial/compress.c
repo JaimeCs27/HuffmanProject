@@ -21,7 +21,7 @@ long int fileLength = 0;
 void processFile(const char *filePath, Node **list) {
   FILE *file = fopen(filePath, "r");
   if (!file) {
-    printf("Error al abrir el archivo %s\n", filePath);
+    printf("Error opening the file %s\n", filePath);
     return;
   }
 
@@ -44,7 +44,7 @@ void compressFile(const char* path, FILE *compress, unsigned char *byte, int *nB
     //printf("PATH: %s\n", path);
     FILE *fe = fopen(path, "r");
     if(!fe){
-      printf("Error al comprimir archivo\n");
+      printf("Error compressing the file\n");
       return;
     }
     
@@ -54,7 +54,7 @@ void compressFile(const char* path, FILE *compress, unsigned char *byte, int *nB
         Table *node = findSymbol(table, (unsigned char)c);
 
         if (node == NULL) {
-            fprintf(stderr, "Símbolo no encontrado en la tabla: %c\n", c);
+            fprintf(stderr, "Symbol not found in the table: %c\n", c);
             continue;
         }
 
@@ -201,7 +201,7 @@ int main(int argc, char *argv[]) {
 
   FILE *compressFile = fopen(fileName, "wb");
   if (!compressFile) {
-      perror("Error al crear el archivo comprimido");
+      perror("Error creating the compressed file");
       return 1;
   }
 
@@ -243,7 +243,7 @@ int main(int argc, char *argv[]) {
                        // free memory
   end = clock();
   cpuTimeUsed = ((double) (end - start)) / CLOCKS_PER_SEC;
-  printf("La compresion de huffman en Serial duro: %f segundos\n", cpuTimeUsed);
+  printf("Serial huffman compression took: %f seconds\n", cpuTimeUsed);
 
   return 0;
 }

@@ -60,7 +60,7 @@ void decompressBook(ThreadParams *threadParams) {
     snprintf(outputPath, sizeof(outputPath), "%s/%s", threadParams->directory, threadParams->title);
     FILE *outputFile = fopen(outputPath, "w");
     if (!outputFile) {
-        perror("Error al crear el archivo de salida");
+        perror("Error creating the output file");
         return;
     }
 
@@ -97,7 +97,7 @@ void decompress(const char *compressedFilePath, const char *outputDirectory) {
     FILE *fi = fopen(compressedFilePath, "rb");
 
     if (!fi) {
-        perror("Error al abrir el archivo comprimido");
+        perror("Error opening the compressed file");
         return;
     }
 
@@ -238,6 +238,6 @@ int main(int argc, char* argv[]) {
 
     end = clock();
     cpuTimeUsed = ((double)(end - start)) / CLOCKS_PER_SEC;
-    printf("La descompresion de huffman en paralelo duro: %f segundos\n", cpuTimeUsed);
+    printf("Concurrent huffman compression took:: %f seconds\n", cpuTimeUsed);
     return 0;
 }
