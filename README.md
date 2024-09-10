@@ -10,13 +10,17 @@ Este proyecto implementara el algoritmo de compresion y descompresion de Huffman
 ## Implementación
 
 En este proyecto se implementarón tres enfoques, un algoritmo Serial, uno Paralelo y uno Concurrente.
-Para la creación del arbol binario se utilizó la siguiente estructura:
+Para la creación del arbol binario se creo un archivo Nodo.h que contiene lo siguiente:
 ```c
 typedef struct Node {
-    struct Node *next;
-    struct Node *left;
-    struct Node *right;
-    unsigned char symbol;
-    int count;
+    struct Node *next; // Puntero al siguiente nodo en la lista
+    struct Node *left; // Puntero al lado izquierdo del arbol binario, su valor es de 0
+    struct Node *right; // Puntero al lado derecho del arbol binario, su valor es de 1
+    unsigned char symbol; // Caractér almacenado
+    int count; // Frecuencia en que aparece el caractér
 }Node;
+
+
 ```
+
+
