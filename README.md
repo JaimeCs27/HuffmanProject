@@ -6,3 +6,11 @@ Este proyecto implementara el algoritmo de compresion y descompresion de Huffman
  - [Compilación](#Compilación)
  - [Uso](#Uso)
  - [Créditos](#Créditos)
+
+## Implementación
+
+En este proyecto se implementarón tres enfoques, un algoritmo Serial, uno Paralelo y uno Concurrente.
+Para la creación del arbol binario se utilizó la siguiente estructura:
+```c
+
+```
