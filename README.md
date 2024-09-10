@@ -55,8 +55,33 @@ Ahora se analizará cada método diferente y como se implementó.
 
 ### Serial
 El algoritmo serial, sería el siguiente:
-- Primero procesa el directorio dado y crea una lista enlazada que contiene los símbolos utilizados en todos los libros y la frecuencia de cada símbolo.
-- Segundo la lista creada se ordena de menor a mayor conforme a su frecuencia.
-- Tercero se 
+1. Procesa el directorio dado y crea una lista enlazada que contiene los símbolos utilizados en todos los libros y la frecuencia de cada símbolo.
+2. La lista creada se ordena de menor a mayor conforme a su frecuencia.
+3. Se crea el arbol binario de Huffman, donde el lado izquierdo es un 0 y el lado derecho es un 1.
+4. Se crea la tabla de Huffman recorriendo el arbol creado.
+5. Guardamos en el archivo binario, la cantidad de caracteres totales, cantidad de elementos en la tabla y guardamos la tabla que se generó.
+6. Leemos la carpeta correspondiente, y leemos linealmente cada archivo, por cada archivo, guardamos en el binario la cantidad de caracteres del nombre archivo, luego el nombre del archivo, la cantidad de caracteres del archivo.
+7. Por archivo, leemos un caracter, lo buscamos en la tabla Huffman y recorremos el arbol binario, si es izquierda se escribe un 0 en el binario, si es derecha se escribe un 1 en el binario.
+8. Cerramos el archivo binario.
 
+### Paralelo
+Para este método se utilizó el mmap para poder compartir una variable entre los procedimientos.
+El algoritmo paralelo, sería el siguiente:
+1. Procesa el directorio dado y crea una lista enlazada que contiene los símbolos utilizados en todos los libros y la frecuencia de cada símbolo.
+2. La lista creada se ordena de menor a mayor conforme a su frecuencia.
+3. Se crea el arbol binario de Huffman, donde el lado izquierdo es un 0 y el lado derecho es un 1.
+4. Se crea la tabla de Huffman recorriendo el arbol creado.
+5. Guardamos en el archivo binario, la cantidad de caracteres totales, cantidad de elementos en la tabla y guardamos la tabla que se generó.
+6. Abrimos el directorio, y aqui por cada archivo, realizamos un fork().
+7. Por cada archivo guardamos en una variable compartida por los procesos la informacion de ese archivo.
+8. Al finalizar todos los procesos, escribimos todos los datos de los archivos.
+
+### Concurrente
+Para este método se utilizó la biblioteca pthread, para el proceso de sincronización de hilos.
+El algoritmo concurrente, sería el siguiente:
+1. Procesa el directorio dado y crea una lista enlazada que contiene los símbolos utilizados en todos los libros y la frecuencia de cada símbolo.
+2. La lista creada se ordena de menor a mayor conforme a su frecuencia.
+3. Se crea el arbol binario de Huffman, donde el lado izquierdo es un 0 y el lado derecho es un 1.
+4. Se crea la tabla de Huffman recorriendo el arbol creado.
+5. Guardamos en el archivo binario, la cantidad de caracteres totales, cantidad de elementos en la tabla y guardamos la tabla que se generó.
 
