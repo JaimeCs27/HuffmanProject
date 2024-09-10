@@ -7,8 +7,29 @@
 #include <string.h>
 #include <time.h>
 
+#define MAX_FILENAME 1024
+#define BUFFER_SIZE 8192
 #define DEBUG printf("Aqui\n");
 
+// Estructura para almacenar información del archivo
+typedef struct {
+    char filename[MAX_FILENAME];
+    unsigned int filenameLength;
+    unsigned long totalCharacters;
+    unsigned long totalBytesWritten;
+    unsigned char *compressedData;
+    
+    int compressedSize;
+} FileData;
+
+// Estructura para pasar argumentos a los hilos
+typedef struct {
+    char *filePath;
+    FILE *outputFile;
+    
+    pthread_mutex_t *fileMutex;
+    char *fileName;
+} ThreadData;
 
 typedef struct {
     const char *filePath;
@@ -28,10 +49,10 @@ CharactersCount* characters[97];
 int indexC = 0;
 pthread_mutex_t indexMutex;
 
+void compressFileToBuffer(const char* path, unsigned char **compressedData, size_t *compressedSize);
 void CountCharacter(Node **list, unsigned char character);
-void *processFileThread(void *arg);
 void processDirectory(const char *directoryPath, Node** list);
-void compressFile(const char* path, FILE *compress, unsigned char *byte, int *nBits);
+//void compressFile(const char* path, FILE *compress, unsigned char *byte, int *nBits);
 void compress(const char* directoryPath, FILE *compress);
 
 
@@ -44,78 +65,60 @@ typedef struct {
     int characterIndex;
 } ThreadArgs;
 
-void *processFileThread(void *args) {
-    ThreadArgs *threadArgs = (ThreadArgs *)args;
+void *compressFile(void *arg) {
+    ThreadData *data = (ThreadData *)arg;
+    //printf("%s\n", data->filePath);
+    FILE *inputFile = fopen(data->filePath, "r");
+    if (!inputFile) {
+        perror("Error al abrir el archivo");
+        return NULL;
+    }
     
-    FILE *file = fopen(threadArgs->filePath, "r");
-    if (!file) {
-        printf("Error al abrir el archivo %s\n", threadArgs->filePath);
-        pthread_exit(NULL);
-    }
-    unsigned char character;
-    int cant = 0;
-    do {
-        character = fgetc(file);
-        if (feof(file)) break;
-        // Proteger el acceso a la lista con el mutex
-        pthread_mutex_lock(threadArgs->listMutex);
-        cant++;
-        fileLength++;
-        CountCharacter(threadArgs->list, character); // Actualiza la lista de nodos
-        pthread_mutex_unlock(threadArgs->listMutex);
-    } while (1);
-    characters[threadArgs->characterIndex] = cant; 
-    indexC++;
-    fclose(file);
-    pthread_exit(NULL);
+    // Leer el archivo y realizar la compresión
+    FileData fileData;
+    strncpy(fileData.filename, data->fileName, MAX_FILENAME);
+    fileData.filenameLength = strlen(fileData.filename);
+    
+    // Aquí es donde llamamos a la nueva función que comprime el archivo en un buffer
+    compressFileToBuffer(data->filePath, &fileData.compressedData, &fileData.compressedSize);
+
+    // Contar el total de caracteres en el archivo original (útil para estadísticas)
+    fseek(inputFile, 0, SEEK_END);
+    fileData.totalCharacters = ftell(inputFile);
+    fclose(inputFile);
+
+    // Bloquear el acceso al archivo global
+    pthread_mutex_lock(data->fileMutex);
+
+    // Escribir los metadatos y datos comprimidos en el archivo de salida
+    fwrite(&fileData.filenameLength, sizeof(unsigned int), 1, data->outputFile);
+    fwrite(&fileData.filename, sizeof(char), fileData.filenameLength, data->outputFile);
+    fwrite(&fileData.totalCharacters, sizeof(unsigned long), 1, data->outputFile);
+    fwrite(&fileData.compressedSize, sizeof(size_t), 1, data->outputFile);  // Guardar el tamaño comprimido
+    fwrite(fileData.compressedData, sizeof(unsigned char), fileData.compressedSize, data->outputFile); // :p
+    pthread_mutex_unlock(data->fileMutex);
+
+    // Liberar el buffer de datos comprimidos
+    free(fileData.compressedData);
+
+    return NULL;
 }
 
-void processFilesConcurrently(const char **filePaths, int numFiles, Node **list) {
-    pthread_t threads[numFiles];
-    ThreadArgs threadArgs[numFiles];
-    pthread_mutex_t listMutex;  // Mutex para proteger la lista compartida
-
-    // Inicializar los mutexes
-    pthread_mutex_init(&listMutex, NULL);
-    pthread_mutex_init(&indexMutex, NULL);  // Mutex para proteger `indexC`
-
-    for (int i = 0; i < numFiles; i++) {
-        // Inicializar los argumentos del hilo
-        threadArgs[i].filePath = filePaths[i];
-        threadArgs[i].list = list;
-        threadArgs[i].listMutex = &listMutex;
-
-        // Asignar un índice único para el array `characters`
-        pthread_mutex_lock(&indexMutex);
-        threadArgs[i].characterIndex = indexC;
-        
-        pthread_mutex_unlock(&indexMutex);
-
-        // Crear un nuevo hilo para procesar el archivo
-        if (pthread_create(&threads[i], NULL, processFileThread, (void *)&threadArgs[i]) != 0) {
-            printf("Error al crear el hilo para el archivo %s\n", filePaths[i]);
-        }
-    }
-
-    // Esperar que todos los hilos terminen
-    for (int i = 0; i < numFiles; i++) {
-        pthread_join(threads[i], NULL);
-    }
-
-    // Destruir los mutexes
-    pthread_mutex_destroy(&listMutex);
-    pthread_mutex_destroy(&indexMutex);
-}
-
-void compressFile(const char* path, FILE *compress, unsigned char *byte, int *nBits){
-    //printf("PATH: %s\n", path);
+void compressFileToBuffer(const char* path, unsigned char **compressedData, size_t *compressedSize) {
     FILE *fe = fopen(path, "r");
-    if(!fe){
-      printf("Error al comprimir archivo\n");
-      return;
+    if (!fe) {
+        printf("Error al comprimir archivo\n");
+        return;
     }
+    // Buffer dinámico para almacenar los datos comprimidos
+    size_t bufferSize = 1024;  // Tamaño inicial
+    *compressedData = (unsigned char *)malloc(bufferSize);
+    *compressedSize = 0;
     
+    unsigned char byte = 0;
+    int nBits = 0;
     int c;
+
     while ((c = fgetc(fe)) != EOF) {
         // Utilizar la función findSymbol para buscar el símbolo en la tabla de Huffman
         Table *node = findSymbol(table, (unsigned char)c);
@@ -127,29 +130,34 @@ void compressFile(const char* path, FILE *compress, unsigned char *byte, int *nB
 
         // Agregar los bits al byte actual
         for (int i = node->nBits - 1; i >= 0; i--) {
-            // Extraer el bit en la posición i
             unsigned char bit = (node->bits >> i) & 1;
+            byte = (byte << 1) | bit;
+            nBits++;
 
-            // Colocar el bit en la posición correspondiente en el byte
-            *byte = (*byte << 1) | bit;
-            (*nBits)++;
-
-            // Si hemos completado 8 bits, escribir el byte en el archivo
-            if (*nBits == 8) {
-                fwrite(byte, sizeof(unsigned char), 1, compress);
-                *byte = 0;
-                *nBits = 0;
+            // Si completamos 8 bits, agregamos el byte al buffer
+            if (nBits == 8) {
+                if (*compressedSize >= bufferSize) {
+                    bufferSize *= 2;
+                    *compressedData = (unsigned char *)realloc(*compressedData, bufferSize);
+                }
+                (*compressedData)[(*compressedSize)++] = byte;
+                byte = 0;
+                nBits = 0;
             }
         }
     }
 
-    // Escribir cualquier bit restante en el byte
-    if (*nBits > 0) {
-        *byte <<= (8 - *nBits);  // Desplazar los bits restantes a la izquierda
-        fwrite(byte, sizeof(unsigned char), 1, compress);
+    // Agregar cualquier byte restante al buffer
+    if (nBits > 0) {
+        byte <<= (8 - nBits);  // Desplazar los bits restantes a la izquierda
+        if (*compressedSize >= bufferSize) {
+            bufferSize *= 2;
+            *compressedData = (unsigned char *)realloc(*compressedData, bufferSize);
+        }
+        (*compressedData)[(*compressedSize)++] = byte;
     }
 
-  fclose(fe);
+    fclose(fe);
 }
 
 void compress(const char* directoryPath, FILE *compress) {
@@ -160,8 +168,12 @@ void compress(const char* directoryPath, FILE *compress) {
         return;
     }
 
-    
-
+    pthread_mutex_t fileMutex;
+    pthread_mutex_init(&fileMutex, NULL);
+    int numThreads = 97; // Este número depende de la cantidad de archivos/hilos que quieras manejar
+    pthread_t threads[numThreads];
+    ThreadData threadData[numThreads];
+    int i = 0;
     // Leer el directorio y comprimir cada archivo
     while ((entry = readdir(dp))) {
         unsigned char byte = 0;
@@ -179,36 +191,49 @@ void compress(const char* directoryPath, FILE *compress) {
 
         // Escribir el tamaño del nombre del archivo
         int fileNameLength = strlen(fileName);
-        fwrite(&fileNameLength, sizeof(int), 1, compress);
-
-        // Escribir el nombre del archivo
-        fwrite(fileName, sizeof(char[fileNameLength]), 1, compress);
-
         // Obtener el tamaño del archivo original
-        FILE *inputFile = fopen(filePath, "r");
-        if (!inputFile) {
-            printf("Error al abrir el archivo %s para compresión\n", filePath);
-            continue;
-        }
-
-        fseek(inputFile, 0, SEEK_END);
-        unsigned int fileSize = ftell(inputFile);
-        fseek(inputFile, 0, SEEK_SET);
-        fclose(inputFile);
-
-        // Escribir la cantidad de caracteres procesados (tamaño del archivo)
-        fwrite(&fileSize, sizeof(unsigned int), 1, compress);
-
-        // Comprimir y escribir los bits correspondientes a este archivo
-        compressFile(filePath, compress, &byte, &nBits);
+        threadData[i].filePath = (char *)malloc(strlen(filePath) + 1);  
+        strcpy(threadData[i].filePath, filePath);
+        threadData[i].fileName = (char *)malloc(strlen(fileName) + 1);
+        strcpy(threadData[i].fileName, fileName); 
+        threadData[i].outputFile = compress;
+        threadData[i].fileMutex = &fileMutex;
+        i++; 
+    }
+    for(int i = 0; i < numThreads; i++){
+        pthread_create(&threads[i], NULL, compressFile, &threadData[i]);
     }
 
+    // Esperar a que todos los hilos terminen
+    for (int i = 0; i < numThreads; i++) {
+        pthread_join(threads[i], NULL);
+    }
     closedir(dp);
 }
 
-//PRUEBA 
+void processFile(const char *filePath, Node **list) {
+  FILE *file = fopen(filePath, "r");
+  if (!file) {
+    printf("Error al abrir el archivo %s\n", filePath);
+    return;
+  }
 
-void processDirectory(const char *directoryPath, Node **list) {
+  unsigned char character;
+  unsigned int cant = 0;
+  do{
+    character = fgetc(file);
+    if(feof(file))
+      break;
+    fileLength++; // Incrementa la longitud por cada carácter leído
+    cant++;
+    CountCharacter(list, character);
+  }while (1);
+  characters[indexC] = cant;
+  indexC++;
+  fclose(file);
+}
+
+void processDirectory(const char *directoryPath, Node** list) {
     struct dirent *entry;
     DIR *dp = opendir(directoryPath);
 
@@ -217,45 +242,25 @@ void processDirectory(const char *directoryPath, Node **list) {
         return;
     }
 
-    // Array dinámico para almacenar las rutas de los archivos
-    const char **filePaths = NULL;
-    int fileCount = 0;
+    
 
-    // Leer el directorio y almacenar las rutas de los archivos
     while ((entry = readdir(dp))) {
         // Ignorar las entradas "." y ".."
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             continue;
         }
-
-        // Construir la ruta completa del archivo
+        
         char filePath[1024];
         snprintf(filePath, sizeof(filePath), "%s/%s", directoryPath, entry->d_name);
 
-        // Almacenar la ruta del archivo en el array
-        fileCount++;
-        filePaths = realloc(filePaths, fileCount * sizeof(char *));
-        filePaths[fileCount - 1] = strdup(filePath);  // Duplica la cadena para almacenarla
+        // Llama a processFile con la ruta completa
+        processFile(filePath, list);
+
+        //printf("Process: %s\n", entry->d_name);
     }
 
-    // Cerrar el directorio
     closedir(dp);
-
-    // Procesar los archivos concurrentemente
-    if (fileCount > 0) {
-        processFilesConcurrently(filePaths, fileCount, list);
-    }
-
-    // Liberar la memoria del array de rutas de archivos
-    for (int i = 0; i < fileCount; i++) {
-        free((void *)filePaths[i]);
-    }
-    free(filePaths);
 }
-
-
-
-
 
 int main(int argc, char *argv[]){
 
@@ -263,6 +268,7 @@ int main(int argc, char *argv[]){
     Node *Tree;
     char *fileName;
     char *directory;
+    
 
     if(argc > 3){
         printf("Expecting less arguments\n");
@@ -284,6 +290,7 @@ int main(int argc, char *argv[]){
     directory = argv[1];
     clock_t start, end;
     double cpuTimeUsed;
+    
     start = clock();
 
     processDirectory(directory, &List);

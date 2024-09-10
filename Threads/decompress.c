@@ -6,10 +6,11 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <time.h>
+#include <pthread.h>
 
 #define DEBUG printf("Aqui\n");
 
-typedef struct tree{
+typedef struct tree {
     unsigned char symbol;
     unsigned long int bits;
     char nBits;
@@ -17,269 +18,226 @@ typedef struct tree{
     struct tree *right;
 } Node;
 
+// Estructura para pasar los parámetros a cada hilo
+typedef struct {
+    Node *tree;
+    FILE *fi;
+    char title[256];  // Almacena el título del libro
+    unsigned long totalCharacters;  // Cantidad total de caracteres del libro
+    unsigned long compressedSize;   // Tamaño comprimido del contenido
+    unsigned char *compressedData;  // Puntero a los datos comprimidos
+    char *directory;                // Directorio de salida
+} ThreadParams;
+
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void createTree(Node *current, Node *newNode, Node *tree, FILE *fi, int elements);
-void decompress(Node *current, Node *newNode, Node *tree, FILE *fi, long int characters, char *directory);
+void *decompressFileThread(void* params);
+void decompressBook(ThreadParams *threadParams);
+Node *rebuildHuffmanTree(FILE *fi, int numElements);
 void deleteTree(Node *n);
+void decompress(const char *compressedFilePath, const char *outputDirectory);
 
-void deleteTree(Node *n)
-{
-   if(n->left) deleteTree(n->left);
-   if(n->right)  deleteTree(n->right);
-   free(n);
+// Función para eliminar el árbol de Huffman
+void deleteTree(Node *n) {
+    if (n->left) deleteTree(n->left);
+    if (n->right) deleteTree(n->right);
+    free(n);
 }
 
-void decompress(Node *current, Node *newNode, Node *tree, FILE *fi, long int characters, char *directory){
-    int cant = 0;
-    char filePath[1024];
-    char fullPath[2048];
-    
-    for (int i = 0; i < 1024; i ++){
-        filePath[i] = '\0';
-    }
-    for (int i = 0; i < 2048; i ++){
-        fullPath[i] = '\0';
-    }
-    unsigned int cantBook = 0;
-    fread(&cant, sizeof(int), 1, fi);
-    fread(&filePath, sizeof(char[cant]), 1, fi);
-    fread(&cantBook, sizeof(unsigned int), 1, fi);
-    unsigned long int bits = 0;
-    unsigned char temp = 0;
-    int j;
-    int cuenta = 0;
-    //printf("Son %li caracteres\n", characters);
-    while(1){
-        snprintf(fullPath, sizeof(fullPath), "%s/%s", directory, filePath);
-        //printf("%s\n", filePath);
-        FILE *fs = fopen(fullPath, "w");
-        
-        bits = 0;
-        fread(&temp, sizeof(char), 1, fi);
-        bits |= temp;
-        j = 0;
-        newNode = tree;
-        do {
-            if(bits & 0x80) 
-                newNode = newNode->right; 
-            else 
-                newNode = newNode->left;
-            bits <<= 1;           
-            j++;
-            if(!newNode->right && !newNode->left)          
-            {
-                putc(newNode->symbol, fs);           
-                cantBook--;                   
-                characters--;
-                newNode= tree;                      
-            }
-            if(cantBook <= 0)
-                break;
-            if(8 == j)            
-            {
-                fread(&temp, sizeof(char), 1, fi);
-                bits |= temp;                    
-                j = 0;                        
-            }                                
-            
-        } while(cantBook);
-        if(characters <= 0){
-            
-            break;
-        }
-        cantBook = 0;
-        cant = 0;
-        fread(&cant, sizeof(int), 1, fi);
-        for (int i = 0; i < 1024; i ++)
-            filePath[i] = '\0';
-        fread(&filePath, sizeof(char[cant]), 1, fi);
-        fread(&cantBook, sizeof(unsigned int), 1, fi);
-        temp = 0;
-        fclose(fs);
-        cuenta++;
-        //printf("Nombre: %s\n", filePath);
-        //printf("faltan %li caracteres\n", characters);
-    }
+// Función que descomprime el contenido del archivo comprimido
+void *decompressFileThread(void* params) {
+    ThreadParams *threadParams = (ThreadParams*) params;
+    decompressBook(threadParams);
+    free(threadParams->compressedData);  // Liberar memoria de los datos comprimidos
+    pthread_exit(NULL);
 }
 
-
-void createTree(Node *current, Node *newNode, Node *tree, FILE *fi, int elements){
-    int j;
-    for(int i = 0; i < elements; i++){
-        current = (Node *)malloc(sizeof(Node));
-        fread(&current->symbol, sizeof(char), 1, fi); 
-        fread(&current->bits, sizeof(unsigned long int), 1, fi);
-        fread(&current->nBits, sizeof(char), 1, fi); 
-        current->right = current->left = NULL;
-        j = 1 << (current->nBits-1);
-        newNode = tree;
-        while(j > 1){
-            if(current->bits & j){
-                if(newNode->right) {
-                    newNode = newNode->right;
-                } else {
-                    newNode->right = (Node *)malloc(sizeof(Node));
-                    newNode = newNode->right;
-                    newNode->symbol = 0;
-                    newNode->right = newNode->left = NULL;
-                }
-            }else{
-                if(newNode->left){
-                    newNode = newNode->left; 
-                } else {
-                    newNode->left = (Node *)malloc(sizeof(Node)); 
-                    newNode = newNode->left;
-                    newNode->symbol = 0;
-                    newNode->right = newNode->left = NULL;
-                }
-            }
-            j >>= 1;
-        }
-        if(current->bits & 1)
-            newNode->right = current;
-        else
-            newNode->left = current;
-    }
-}
-
-void removeDirectoryContents(const char *path) {
-    DIR *d = opendir(path);
-    struct dirent *dir;
-    char filePath[1024];
-
-    if (!d) {
-        perror("Error al abrir el directorio");
+// Función para descomprimir un libro individual
+void decompressBook(ThreadParams *threadParams) {
+    // Crear el archivo de salida con el título
+    char outputPath[1024];
+    snprintf(outputPath, sizeof(outputPath), "%s/%s", threadParams->directory, threadParams->title);
+    FILE *outputFile = fopen(outputPath, "w");
+    if (!outputFile) {
+        perror("Error al crear el archivo de salida");
         return;
     }
 
-    while ((dir = readdir(d)) != NULL) {
-        // Ignorar "." y ".."
-        if (strcmp(dir->d_name, ".") == 0 || strcmp(dir->d_name, "..") == 0) {
-            continue;
-        }
+    // Recorrer el contenido comprimido y descomprimir usando el árbol de Huffman
+    unsigned char bitBuffer = 0;
+    int bitsInBuffer = 0;
+    Node *current = threadParams->tree;
+    int cantBook = threadParams->totalCharacters;
 
-        // Crear la ruta completa para el archivo o subdirectorio
-        snprintf(filePath, sizeof(filePath), "%s/%s", path, dir->d_name);
-
-        struct stat st;
-        if (stat(filePath, &st) == 0) {
-            if (S_ISDIR(st.st_mode)) {
-                // Si es un directorio, eliminar su contenido recursivamente
-                removeDirectoryContents(filePath);
-                rmdir(filePath);  // Eliminar el directorio vacío
-            } else {
-                // Si es un archivo, eliminarlo
-                remove(filePath);
+    for (unsigned long i = 0; i < threadParams->compressedSize; ++i) {
+        for (int bit = 7; bit >= 0; --bit) {
+            unsigned char currentBit = (threadParams->compressedData[i] >> bit) & 1;
+            current = currentBit ? current->right : current->left;
+            
+            if (!current->left && !current->right) {
+                // Es un nodo hoja, escribir el símbolo en el archivo de salida
+                fputc(current->symbol, outputFile);
+                cantBook--;
+                current = threadParams->tree; // Regresar al inicio del árbol
             }
+            if(cantBook <= 0)
+                break;
         }
+        if(cantBook <= 0)
+            break;
     }
-    closedir(d);
+
+    fclose(outputFile);
 }
 
+// Función principal que coordina la descompresión utilizando hilos
+void decompress(const char *compressedFilePath, const char *outputDirectory) {
+    printf("%s\n%s\n", compressedFilePath, outputDirectory);
+    FILE *fi = fopen(compressedFilePath, "rb");
 
-int main(int argc, char* argv[]){
+    if (!fi) {
+        perror("Error al abrir el archivo comprimido");
+        return;
+    }
+
+    // Leer la cantidad total de caracteres en el archivo comprimido
+    long int totalCharacters;
+    fread(&totalCharacters, sizeof(long int), 1, fi);
+
+    // Leer el número de elementos en la tabla de Huffman
+    int numElements;
+    fread(&numElements, sizeof(int), 1, fi);
+
+    // Reconstruir el árbol de Huffman
+    Node *huffmanTree = rebuildHuffmanTree(fi, numElements);
+    
+    // Crear el directorio de salida si no existe
+    mkdir(outputDirectory, 0777);
+
+    int numBooks = 97;
+    
+    pthread_t threads[numBooks];
+    ThreadParams threadParams[numBooks];
+
+    for (int i = 0; i < numBooks; i++) {
+        unsigned int titleLength;
+        fread(&titleLength, sizeof(unsigned int), 1, fi);
+
+        char title[256];
+        fread(title, sizeof(char), titleLength, fi);
+        title[titleLength] = '\0';  // Terminar la cadena
+
+        unsigned long totalCharactersInBook;
+        fread(&totalCharactersInBook, sizeof(unsigned long), 1, fi);
+
+        unsigned long compressedSize;
+        fread(&compressedSize, sizeof(unsigned long), 1, fi);
+
+        unsigned char *compressedData = (unsigned char *)malloc(compressedSize);
+        fread(compressedData, sizeof(unsigned char), compressedSize, fi);
+
+        // Configurar los parámetros del hilo
+        threadParams[i].tree = huffmanTree;
+        strcpy(threadParams[i].title, title);
+        threadParams[i].totalCharacters = totalCharactersInBook;
+        threadParams[i].compressedSize = compressedSize;
+        threadParams[i].compressedData = compressedData;
+        threadParams[i].directory = (char *)outputDirectory;
+
+        // Crear el hilo
+        pthread_create(&threads[i], NULL, decompressFileThread, &threadParams[i]);
+    }
+
+    // Esperar a que todos los hilos terminen
+    for (int i = 0; i < numBooks; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
+    fclose(fi);
+    deleteTree(huffmanTree); // Liberar el árbol de Huffman
+}
+
+// Función para reconstruir el árbol de Huffman desde el archivo comprimido
+Node *rebuildHuffmanTree(FILE *fi, int numElements) {
+    Node *tree = (Node *)malloc(sizeof(Node));
+    memset(tree, 0, sizeof(Node)); // Inicializar el árbol
+
+    for (int i = 0; i < numElements; i++) {
+        unsigned char symbol;
+        unsigned long int bits;
+        char nBits;
+
+        fread(&symbol, sizeof(unsigned char), 1, fi);
+        fread(&bits, sizeof(unsigned long int), 1, fi);
+        fread(&nBits, sizeof(char), 1, fi);
+
+        // Reconstruir el nodo en el árbol de Huffman
+        Node *current = tree;
+        for (int bitPos = nBits - 1; bitPos >= 0; bitPos--) {
+            unsigned char bit = (bits >> bitPos) & 1;
+
+            if (bit) {
+                if (!current->right) {
+                    current->right = (Node *)malloc(sizeof(Node));
+                    memset(current->right, 0, sizeof(Node));
+                }
+                current = current->right;
+            } else {
+                if (!current->left) {
+                    current->left = (Node *)malloc(sizeof(Node));
+                    memset(current->left, 0, sizeof(Node));
+                }
+                current = current->left;
+            }
+        }
+
+        current->symbol = symbol;
+    }
+
+    return tree;
+}
+
+int main(int argc, char* argv[]) {
     Node *tree;
     long int characters;
     int elements;
-
     char *fileName;
     char *directory;
 
-
-    if(argc > 3){
+    if (argc > 3) {
         printf("Expecting less arguments\n");
         printf("Correct Usage: ./decompress <Compressed File Name> <Directory Name>\n");
         return 1;
     }
 
-    if(argc == 2){
+    if (argc == 2) {
         printf("Directory argument not given using the default name: 'CompressedFile'\n");
         directory = "CompressedFile";
-    }else{
+    } else {
         directory = argv[2];
     }
-    if(argc <= 1){
-        printf("Not enought arguments passed\n");
+    if (argc <= 1) {
+        printf("Not enough arguments passed\n");
         printf("Correct Usage: ./decompress <Compressed File Name> <Directory Name>\n");
         return 1;
     }
     fileName = argv[1];
+
+    // Crear el directorio
     struct stat st = {0};
-    size_t len;
-    // Asignar el nombre del directorio desde los argumentos
-    
-    while (1) {
-        // Verificar si el directorio ya existe
-        if (stat(directory, &st) == 0 && S_ISDIR(st.st_mode)) {
-            char respuesta[10];
-            printf("El directorio '%s' ya existe. ¿Deseas reemplazarlo? (s/n): ", directory);
-            fgets(respuesta, sizeof(respuesta), stdin);
-
-            // Verificar la respuesta del usuario
-            if (respuesta[0] == 's' || respuesta[0] == 'S') {
-                // Eliminar el directorio existente
-                if (rmdir(directory) == 0) {
-                    printf("Directorio '%s' eliminado.\n", directory);
-                } else {
-                    perror("Error al eliminar el directorio");
-                    free(directory);
-                    return 1;
-                }
-                break;  // Salir del bucle si se decide reemplazar
-            } else {
-                // Pedir al usuario un nuevo nombre de directorio
-                printf("Introduce un nuevo nombre para el directorio: ");
-                fgets(respuesta, sizeof(respuesta), stdin);
-                respuesta[strcspn(respuesta, "\n")] = 0;  // Eliminar el salto de línea al final
-
-                // Realocar memoria para el nuevo nombre del directorio
-                len = strlen(respuesta);
-                directory = (char *)realloc(directory, len + 1);
-                if (directory == NULL) {
-                    perror("Error al asignar memoria");
-                    return 1;
-                }
-                strcpy(directory, respuesta);
-            }
-        } else {
-            break;  // Salir del bucle si el directorio no existe
-        }
+    if (stat(directory, &st) == -1) {
+        mkdir(directory, 0700);
     }
 
-    // Crear el nuevo directorio
-    if (mkdir(directory, 0755) == 0) {
-        printf("Directorio creado exitosamente: %s\n", directory);
-    } else {
-        perror("Error al crear el directorio");
-    }
     clock_t start, end;
     double cpuTimeUsed;
     start = clock();
-    tree = (Node *)malloc(sizeof(Node));
-    tree->symbol = 0;
-    tree->right = tree->left = NULL;
 
-    FILE *fi = fopen(fileName, "rb");
-    fread(&characters, sizeof(long int), 1, fi);
-    fread(&elements, sizeof(int), 1, fi);
-    
-    
-
-    Node *current = NULL;
-    Node *newNode = NULL;
-
-    printf("Create tree: \n");
-    createTree(current, newNode, tree, fi, elements);
+    decompress(fileName, directory);
 
     end = clock();
-    cpuTimeUsed = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("La creacion del tree duro: %f segundos\n", cpuTimeUsed);
-    decompress(current, newNode, tree, fi, characters, directory);
-    fclose(fi);
-    deleteTree(tree);
-    end = clock();
-    cpuTimeUsed = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("La descompresion de huffman en Serial duro: %f segundos\n", cpuTimeUsed);
+    cpuTimeUsed = ((double)(end - start)) / CLOCKS_PER_SEC;
+    printf("La descompresion de huffman en paralelo duro: %f segundos\n", cpuTimeUsed);
+    return 0;
 }
-
