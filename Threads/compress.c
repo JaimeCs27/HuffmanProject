@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/time.h>
 
 #define MAX_FILENAME 1024
 #define BUFFER_SIZE 8192
@@ -320,16 +321,13 @@ int main(int argc, char *argv[]){
         return 1;
     }
     directory = argv[1];
-    clock_t start, end;
-    double cpuTimeUsed;
-    
-    start = clock();
+    struct timeval start, end;
+    double elapsedTime;
+
+    // Obtener el tiempo de inicio
+    gettimeofday(&start, NULL);
 
     processDirectory(directory, &List);
-    clock_t ti, a;
-    ti = clock();
-    cpuTimeUsed = ((double) (ti - start)) / CLOCKS_PER_SEC;
-    printf("Process file took: %f seconds\n", cpuTimeUsed);
     sortList(&List);
 
   
@@ -374,13 +372,7 @@ int main(int argc, char *argv[]){
         fwrite(&t->nBits, sizeof(char), 1, compressFile);
         t = t->next;
     }
-    a = clock();
     compress(directory, compressFile);
-
-    ti = clock();
-    cpuTimeUsed = ((double) (ti - a)) / CLOCKS_PER_SEC;
-    printf("Compress took: %f seconds\n", cpuTimeUsed);
-
 
     fclose(compressFile); //Close file
     
@@ -389,9 +381,11 @@ int main(int argc, char *argv[]){
     //printTable(table);
     destroyTable(table); // Input: Table, Output: None, Function: Destroys it to
 
-    end = clock();
-    cpuTimeUsed = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("Concurrent huffman compression took: %f seconds\n", cpuTimeUsed);
+    gettimeofday(&end, NULL);
+
+    // Calcular el tiempo transcurrido en segundos
+    elapsedTime = (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1000000.0;
+    printf("Concurrent Huffman compression took: %f seconds\n", elapsedTime);
 
     return 0;
 

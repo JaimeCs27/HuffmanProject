@@ -10,26 +10,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <semaphore.h>
+#include <limits.h>
+#include <sys/time.h>
 
 
 #define DEBUG printf("Aqui\n");
-#define SHARED_MEMORY_SIZE 4096  // 4KB de memoria compartida
 
 
 typedef struct {
     char* name;
     int count;
 } CharactersCount;
-
-typedef struct {
-    int nameLength;
-    char name[256]; // Asumiendo que el nombre del archivo no excederá los 255 caracteres
-    long totalCharacters;
-    long compressedBytes;
-    unsigned char compressedData[SHARED_MEMORY_SIZE]; // Buffer para los datos comprimidos
-} CompressedFileData;
-
 
 extern Table *table;
 long int fileLength = 0;
@@ -119,37 +110,54 @@ void CountCharacter(Node **list, unsigned char character) {
   }
 }
 
-void writeCompressedDataToFile(CompressedFileData *sharedData, int numFiles, FILE *outputFile) {
-    for (int i = 0; i < numFiles; i++) {
-        fwrite(&sharedData[i].nameLength, sizeof(int), 1, outputFile);
-        fwrite(sharedData[i].name, sizeof(char), sharedData[i].nameLength, outputFile);
-        fwrite(&sharedData[i].totalCharacters, sizeof(long), 1, outputFile);
-        fwrite(&sharedData[i].compressedBytes, sizeof(long), 1, outputFile);
-        fwrite(sharedData[i].compressedData, sizeof(char), sharedData[i].compressedBytes, outputFile);
-    }
-}
-
-void compressFile(const char *filePath, const char *fileName, Node **list, CompressedFileData *sharedData, int fileIndex) {
+void compressFile(const char *filePath, const char *fileName, Node **list, int fileIndex) {
     FILE *fe = fopen(filePath, "r");
     if (!fe) {
         printf("Error opening the file %s\n", filePath);
         return;
     }
 
-    size_t bufferSize = 1024;
-    unsigned char *compressedData = sharedData[fileIndex].compressedData;
-    int compressedBytes = 0;
+    // Crear un archivo temporal único para cada proceso hijo
+    char tempFileName[256];
+    snprintf(tempFileName, sizeof(tempFileName), "temp_compressed_%d.bin", fileIndex);
+    FILE *tempFile = fopen(tempFileName, "wb");
+    if (!tempFile) {
+        printf("Error creating temporary file for %s\n", fileName);
+        fclose(fe);
+        return;
+    }
+
     unsigned char byte = 0;
     int nBits = 0;
     int c;
+    long totalCharacters = 0;  // Total de caracteres del archivo original
+    long compressedBytes = 0;  // Contador de bytes comprimidos
 
-    sharedData[fileIndex].nameLength = strlen(fileName);
-    strncpy(sharedData[fileIndex].name, fileName, 255);
+    // Usar un buffer para almacenar el contenido comprimido
+    unsigned char *compressedData = (unsigned char *)malloc(1024 * sizeof(unsigned char));
+    size_t bufferSize = 1024;
+    size_t bufferIndex = 0;
 
-    int cant = 0;
+    // 1. Longitud del nombre del archivo
+    int nameLength = strlen(fileName);
+    fwrite(&nameLength, sizeof(int), 1, tempFile);
 
+    // 2. Escribir el nombre del archivo
+    fwrite(fileName, sizeof(char), nameLength, tempFile);
+
+    // 3. Escribir el total de caracteres, pero primero contar los caracteres
     while ((c = fgetc(fe)) != EOF) {
-        cant++;
+        totalCharacters++;
+    }
+
+    // Escribir el total de caracteres en el archivo temporal
+    fwrite(&totalCharacters, sizeof(long), 1, tempFile);
+
+    // Reiniciar el puntero del archivo para comprimir
+    rewind(fe);
+
+    // 4. Comprimir el archivo y almacenar los datos en el buffer
+    while ((c = fgetc(fe)) != EOF) {
         Table *node = findSymbol(table, (unsigned char)c);
         if (!node) {
             fprintf(stderr, "Symbol not found in the table: %c\n", c);
@@ -162,25 +170,45 @@ void compressFile(const char *filePath, const char *fileName, Node **list, Compr
             nBits++;
 
             if (nBits == 8) {
-                compressedData[compressedBytes++] = byte;
+                if (bufferIndex >= bufferSize) {
+                    bufferSize *= 2;
+                    compressedData = (unsigned char *)realloc(compressedData, bufferSize);
+                }
+                compressedData[bufferIndex++] = byte;
+                compressedBytes++;  // Incrementar contador de bytes comprimidos
                 byte = 0;
                 nBits = 0;
             }
         }
     }
 
+    // Escribir el último byte si no está lleno
     if (nBits > 0) {
         byte <<= (8 - nBits);
-        compressedData[compressedBytes++] = byte;
+        if (bufferIndex >= bufferSize) {
+            bufferSize *= 2;
+            compressedData = (unsigned char *)realloc(compressedData, bufferSize);
+        }
+        compressedData[bufferIndex++] = byte;
+        compressedBytes++;  // Incrementar el contador de bytes comprimidos
     }
 
-    sharedData[fileIndex].compressedBytes = compressedBytes;
-    sharedData[fileIndex].totalCharacters = cant;
+    // 5. Escribir la cantidad de bytes comprimidos
+    fwrite(&compressedBytes, sizeof(long), 1, tempFile);
+
+    // 6. Escribir el contenido comprimido en el archivo temporal
+    fwrite(compressedData, sizeof(unsigned char), compressedBytes, tempFile);
+
+    // Liberar el buffer temporal
+    free(compressedData);
 
     fclose(fe);
+    fclose(tempFile);  // Cerrar el archivo temporal
 }
 
-void compress(const char *directoryPath, CompressedFileData *sharedData) {
+
+
+void compress(const char *directoryPath) {
     Node *list = NULL;
     struct dirent *entry;
     DIR *dp = opendir(directoryPath);
@@ -201,10 +229,12 @@ void compress(const char *directoryPath, CompressedFileData *sharedData) {
 
         pid_t pid = fork();
         if (pid == 0) {
-            compressFile(filePath, entry->d_name, &list, sharedData, fileIndex);
+            // Proceso hijo: comprime y escribe en un archivo temporal
+            compressFile(filePath, entry->d_name, &list, fileIndex);
             exit(0);
         } else if (pid > 0) {
-            wait(NULL); // Esperar a que termine el proceso hijo
+            // Proceso padre: esperar a que el proceso hijo termine
+            wait(NULL);
         } else {
             perror("Error al crear el proceso hijo");
             return;
@@ -215,6 +245,30 @@ void compress(const char *directoryPath, CompressedFileData *sharedData) {
     closedir(dp);
 }
 
+void appendTemporaryFilesToMain(int numFiles, FILE *outputFile) {
+    for (int i = 0; i < numFiles; i++) {
+        // Abrir el archivo temporal
+        char tempFileName[256];
+        snprintf(tempFileName, sizeof(tempFileName), "temp_compressed_%d.bin", i);
+        FILE *tempFile = fopen(tempFileName, "rb");
+        if (!tempFile) {
+            printf("Error opening temporary file %s\n", tempFileName);
+            continue;
+        }
+
+        // Leer el contenido del archivo temporal y escribirlo en el archivo de salida
+        unsigned char buffer[1024];
+        size_t bytesRead;
+        while ((bytesRead = fread(buffer, sizeof(unsigned char), sizeof(buffer), tempFile)) > 0) {
+            fwrite(buffer, sizeof(unsigned char), bytesRead, outputFile);
+        }
+
+        fclose(tempFile);
+
+        // Eliminar el archivo temporal después de usarlo
+        remove(tempFileName);
+    }
+}
 
 int main(int argc, char *argv[]){
     Node *List;
@@ -240,15 +294,18 @@ int main(int argc, char *argv[]){
         return 1;
     }
     directory = argv[1];
-    clock_t start, end;
-    double cpuTimeUsed;
-    
-    start = clock();
-    processDirectory(directory, &List);
 
+    // Variables para medir tiempo
+    struct timeval start, end;
+    double elapsedTime;
+
+    // Obtener el tiempo de inicio
+    gettimeofday(&start, NULL);
+
+    processDirectory(directory, &List);
     sortList(&List);
 
-  
+    // Crear el árbol de Huffman
     Tree = List;
     while(Tree && Tree->next){
         Node *newNode = (Node*)malloc(sizeof(Node));
@@ -263,23 +320,17 @@ int main(int argc, char *argv[]){
 
     createTable(Tree, 0, 0);
 
+    // Abrir el archivo comprimido
     FILE *compressFile = fopen(fileName, "wb");
     if (!compressFile) {
         perror("Error creating compressed file");
         return 1;
     }
 
-    int numFiles = 4;
+    // Realizar la compresión (incluyendo los forks y procesos hijos)
+    compress(directory);
 
-    CompressedFileData *sharedData = mmap(NULL, sizeof(CompressedFileData) * numFiles,
-                                      PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-    if (sharedData == MAP_FAILED) {
-        perror("Error creating shared memory");
-        exit(EXIT_FAILURE);
-    }
-    
-    compress(directory, sharedData);
-
+    // Escribir información de compresión en el archivo
     fwrite(&fileLength, sizeof(long int), 1, compressFile);
     int countElements = 0;
     Table *t = table;  
@@ -288,32 +339,34 @@ int main(int argc, char *argv[]){
         t = t->next;
     }
 
-    // Write the number of elements in the table
     fwrite(&countElements, sizeof(int), 1, compressFile);
-
-    // Save the table
-    t = table; 
-    while (t) { 
+    t = table;
+    while (t) {
         fwrite(&t->symbol, sizeof(char), 1, compressFile);
         fwrite(&t->bits, sizeof(unsigned long int), 1, compressFile);
         fwrite(&t->nBits, sizeof(char), 1, compressFile);
         t = t->next;
     }
-    
-    //AQUI VA EL COMPRESS
-    
-    writeCompressedDataToFile(sharedData, numFiles, compressFile);
 
+    // Apendizar los archivos temporales al archivo principal
+    int numFiles = 97;
+    appendTemporaryFilesToMain(numFiles, compressFile);
 
-    fclose(compressFile); //Close file
+    // Cerrar el archivo comprimido
+    fclose(compressFile);
 
-    freeNode(Tree); // Input: Tree, Output: None, Function: Destroys it to free memory
-    //printTable(table);
-    destroyTable(table); // Input: Table, Output: None, Function: Destroys it to
+    // Liberar memoria
+    freeNode(Tree);
+    destroyTable(table);
 
-    end = clock();
-    cpuTimeUsed = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("Parallel Huffman compression took: %f seconds\n", cpuTimeUsed);
+    // Obtener el tiempo de finalización
+    gettimeofday(&end, NULL);
+
+    // Calcular el tiempo transcurrido en segundos
+    elapsedTime = (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1000000.0;
+
+    // Mostrar el tiempo transcurrido
+    printf("Parallel Huffman compression took: %f seconds\n", elapsedTime);
 
     return 0;
 }

@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/time.h>
 
 #define DEBUG printf("Aqui\n");
 
@@ -175,9 +176,11 @@ int main(int argc, char *argv[]) {
   }
   directory = argv[1];
   
-  clock_t start, end;
-  double cpuTimeUsed;
-  start = clock();
+  struct timeval start, end;
+  double elapsedTime;
+
+  // Obtener el tiempo de inicio
+  gettimeofday(&start, NULL);
   
   processDirectory(directory, &List);
   sortList(&List);
@@ -241,9 +244,10 @@ int main(int argc, char *argv[]) {
   //printTable(table);
   destroyTable(table); // Input: Table, Output: None, Function: Destroys it to
                        // free memory
-  end = clock();
-  cpuTimeUsed = ((double) (end - start)) / CLOCKS_PER_SEC;
-  printf("Serial huffman compression took: %f seconds\n", cpuTimeUsed);
+  
+  gettimeofday(&end, NULL);
+  elapsedTime = (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1000000.0;
+  printf("Concurrent Huffman compression took: %f seconds\n", elapsedTime);
 
   return 0;
 }
