@@ -1,8 +1,8 @@
 #include "Tabla.h"
 #include "Nodos.h"
 #include <sys/mman.h>
-#include <fcntl.h>  
-#include <pthread.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -10,13 +10,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <limits.h>
 #include <sys/time.h>
 
 
 #define DEBUG printf("Aqui\n");
 
-
+void CountCharacter(Node **list, unsigned char character);
 typedef struct {
     char* name;
     int count;
@@ -24,8 +23,6 @@ typedef struct {
 
 extern Table *table;
 long int fileLength = 0;
-CharactersCount* characters[97];
-int indexC = 0;
 
 void processFile(const char *filePath, Node **list) {
   FILE *file = fopen(filePath, "r");
@@ -44,8 +41,6 @@ void processFile(const char *filePath, Node **list) {
     cant++;
     CountCharacter(list, character);
   }while (1);
-  characters[indexC] = cant;
-  indexC++;
   fclose(file);
 }
 

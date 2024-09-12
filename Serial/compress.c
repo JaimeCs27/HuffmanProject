@@ -184,7 +184,6 @@ int main(int argc, char *argv[]) {
   
   processDirectory(directory, &List);
   sortList(&List);
-
   
   Tree = List;
   while(Tree && Tree->next){

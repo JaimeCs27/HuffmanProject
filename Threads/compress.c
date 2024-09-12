@@ -50,7 +50,7 @@ CharactersCount* characters[97];
 int indexC = 0;
 pthread_mutex_t indexMutex;
 
-void compressFileToBuffer(const char* path, unsigned char **compressedData, size_t *compressedSize);
+void compressFileToBuffer(const char* path, unsigned char **compressedData, int *compressedSize);
 void CountCharacter(Node **list, unsigned char character);
 void processDirectory(const char *directoryPath, Node** list);
 //void compressFile(const char* path, FILE *compress, unsigned char *byte, int *nBits);
@@ -104,7 +104,7 @@ void *compressFile(void *arg) {
     return NULL;
 }
 
-void compressFileToBuffer(const char* path, unsigned char **compressedData, size_t *compressedSize) {
+void compressFileToBuffer(const char* path, unsigned char **compressedData, int *compressedSize) {
     FILE *fe = fopen(path, "r");
     if (!fe) {
         printf("Error compressing the file\n");
@@ -228,7 +228,6 @@ void processFile(const char *filePath, Node **list) {
     cant++;
     CountCharacter(list, character);
   }while (1);
-  characters[indexC] = cant;
   indexC++;
   fclose(file);
 }

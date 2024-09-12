@@ -6,7 +6,9 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <time.h>
-#include <pthread.h>
+#include <sys/shm.h>
+#include <sys/ipc.h>
+#include <sys/wait.h>
 
 #define DEBUG printf("Aqui\n");
 
@@ -18,22 +20,17 @@ typedef struct tree {
     struct tree *right;
 } Node;
 
-// Estructura para pasar los parámetros a cada hilo
+// Estructura para almacenar la información de cada libro
 typedef struct {
     Node *tree;
-    FILE *fi;
     char title[256];  // Almacena el título del libro
     unsigned long totalCharacters;  // Cantidad total de caracteres del libro
     unsigned long compressedSize;   // Tamaño comprimido del contenido
-    unsigned char *compressedData;  // Puntero a los datos comprimidos
-    char *directory;                // Directorio de salida
-} ThreadParams;
-
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+    unsigned char *compressedData; // Datos comprimidos (arreglo dinámico)
+} Book;
 
 void createTree(Node *current, Node *newNode, Node *tree, FILE *fi, int elements);
-void *decompressFileThread(void* params);
-void decompressBook(ThreadParams *threadParams);
+void decompressBook(Node *tree, const char *directory, const char *title, unsigned long totalCharacters, unsigned long compressedSize, unsigned char *compressedData);
 Node *rebuildHuffmanTree(FILE *fi, int numElements);
 void deleteTree(Node *n);
 void decompress(const char *compressedFilePath, const char *outputDirectory);
@@ -45,19 +42,11 @@ void deleteTree(Node *n) {
     free(n);
 }
 
-// Función que descomprime el contenido del archivo comprimido
-void *decompressFileThread(void* params) {
-    ThreadParams *threadParams = (ThreadParams*) params;
-    decompressBook(threadParams);
-    free(threadParams->compressedData);  // Liberar memoria de los datos comprimidos
-    pthread_exit(NULL);
-}
-
 // Función para descomprimir un libro individual
-void decompressBook(ThreadParams *threadParams) {
+void decompressBook(Node *tree, const char *directory, const char *title, unsigned long totalCharacters, unsigned long compressedSize, unsigned char *compressedData) {
     // Crear el archivo de salida con el título
     char outputPath[1024];
-    snprintf(outputPath, sizeof(outputPath), "%s/%s", threadParams->directory, threadParams->title);
+    snprintf(outputPath, sizeof(outputPath), "%s/%s", directory, title);
     FILE *outputFile = fopen(outputPath, "w");
     if (!outputFile) {
         perror("Error creating the output file");
@@ -67,31 +56,31 @@ void decompressBook(ThreadParams *threadParams) {
     // Recorrer el contenido comprimido y descomprimir usando el árbol de Huffman
     unsigned char bitBuffer = 0;
     int bitsInBuffer = 0;
-    Node *current = threadParams->tree;
-    int cantBook = threadParams->totalCharacters;
+    Node *current = tree;
+    int cantBook = totalCharacters;
 
-    for (unsigned long i = 0; i < threadParams->compressedSize; ++i) {
+    for (unsigned long i = 0; i < compressedSize; ++i) {
         for (int bit = 7; bit >= 0; --bit) {
-            unsigned char currentBit = (threadParams->compressedData[i] >> bit) & 1;
+            unsigned char currentBit = (compressedData[i] >> bit) & 1;
             current = currentBit ? current->right : current->left;
             
             if (!current->left && !current->right) {
                 // Es un nodo hoja, escribir el símbolo en el archivo de salida
                 fputc(current->symbol, outputFile);
                 cantBook--;
-                current = threadParams->tree; // Regresar al inicio del árbol
+                current = tree; // Regresar al inicio del árbol
             }
-            if(cantBook <= 0)
+            if (cantBook <= 0)
                 break;
         }
-        if(cantBook <= 0)
+        if (cantBook <= 0)
             break;
     }
 
     fclose(outputFile);
 }
 
-// Función principal que coordina la descompresión utilizando hilos
+// Función principal que coordina la descompresión utilizando procesos hijos
 void decompress(const char *compressedFilePath, const char *outputDirectory) {
     printf("%s\n%s\n", compressedFilePath, outputDirectory);
     FILE *fi = fopen(compressedFilePath, "rb");
@@ -111,48 +100,63 @@ void decompress(const char *compressedFilePath, const char *outputDirectory) {
 
     // Reconstruir el árbol de Huffman
     Node *huffmanTree = rebuildHuffmanTree(fi, numElements);
-    
+
     // Crear el directorio de salida si no existe
     mkdir(outputDirectory, 0777);
 
+    // Leer el número de libros
     int numBooks = 97;
-    
-    pthread_t threads[numBooks];
-    ThreadParams threadParams[numBooks];
+
+    // Crear un segmento de memoria compartida para almacenar los libros
+    int shmId = shmget(IPC_PRIVATE, numBooks * sizeof(Book), IPC_CREAT | 0666);
+    if (shmId < 0) {
+        perror("Error creating shared memory");
+        exit(1);
+    }
+
+    // Adjuntar el segmento de memoria compartida
+    Book *books = (Book *)shmat(shmId, NULL, 0);
 
     for (int i = 0; i < numBooks; i++) {
         unsigned int titleLength;
         fread(&titleLength, sizeof(unsigned int), 1, fi);
 
-        char title[256];
-        fread(title, sizeof(char), titleLength, fi);
-        title[titleLength] = '\0';  // Terminar la cadena
+        fread(books[i].title, sizeof(char), titleLength, fi);
+        books[i].title[titleLength] = '\0';  // Terminar la cadena
 
-        unsigned long totalCharactersInBook;
-        fread(&totalCharactersInBook, sizeof(unsigned long), 1, fi);
+        fread(&books[i].totalCharacters, sizeof(unsigned long), 1, fi);
+        fread(&books[i].compressedSize, sizeof(unsigned long), 1, fi);
 
-        unsigned long compressedSize;
-        fread(&compressedSize, sizeof(unsigned long), 1, fi);
+        // Alocar memoria para los datos comprimidos de cada libro
+        books[i].compressedData = (unsigned char *)malloc(books[i].compressedSize);
+        fread(books[i].compressedData, sizeof(unsigned char), books[i].compressedSize, fi);
 
-        unsigned char *compressedData = (unsigned char *)malloc(compressedSize);
-        fread(compressedData, sizeof(unsigned char), compressedSize, fi);
-
-        // Configurar los parámetros del hilo
-        threadParams[i].tree = huffmanTree;
-        strcpy(threadParams[i].title, title);
-        threadParams[i].totalCharacters = totalCharactersInBook;
-        threadParams[i].compressedSize = compressedSize;
-        threadParams[i].compressedData = compressedData;
-        threadParams[i].directory = (char *)outputDirectory;
-
-        // Crear el hilo
-        pthread_create(&threads[i], NULL, decompressFileThread, &threadParams[i]);
+        // Copiar el árbol de Huffman a cada libro
+        books[i].tree = huffmanTree;
     }
 
-    // Esperar a que todos los hilos terminen
+    // Crear los procesos hijos
     for (int i = 0; i < numBooks; i++) {
-        pthread_join(threads[i], NULL);
+        pid_t pid = fork();
+
+        if (pid == 0) {
+            // Proceso hijo: descomprime su parte del libro
+            decompressBook(books[i].tree, outputDirectory, books[i].title, books[i].totalCharacters, books[i].compressedSize, books[i].compressedData);
+            free(books[i].compressedData);  // Liberar memoria de los datos comprimidos
+            exit(0);  // Finalizar el proceso hijo
+        }
     }
+
+    // Esperar a que todos los hijos terminen
+    for (int i = 0; i < numBooks; i++) {
+        wait(NULL);
+    }
+
+    // Desconectar la memoria compartida
+    shmdt(books);
+
+    // Eliminar el segmento de memoria compartida
+    shmctl(shmId, IPC_RMID, NULL);
 
     fclose(fi);
     deleteTree(huffmanTree); // Liberar el árbol de Huffman
@@ -238,7 +242,6 @@ int main(int argc, char* argv[]) {
 
     end = clock();
     cpuTimeUsed = ((double)(end - start)) / CLOCKS_PER_SEC;
-    printf("Concurrent huffman compression took:: %f seconds\n", cpuTimeUsed);
+    printf("Concurrent Huffman decompression took: %f seconds\n", cpuTimeUsed);
     return 0;
 }
-
