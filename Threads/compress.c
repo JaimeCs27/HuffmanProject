@@ -46,9 +46,10 @@ typedef struct {
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 extern Table *table;
 long int fileLength = 0;
-CharactersCount* characters[97];
 int indexC = 0;
 pthread_mutex_t indexMutex;
+int numThreads = 0;
+
 
 void compressFileToBuffer(const char* path, unsigned char **compressedData, int *compressedSize);
 void CountCharacter(Node **list, unsigned char character);
@@ -170,14 +171,12 @@ void compress(const char* directoryPath, FILE *compress) {
 
     pthread_mutex_t fileMutex;
     pthread_mutex_init(&fileMutex, NULL);
-    int numThreads = 97; // Este número depende de la cantidad de archivos/hilos que quieras manejar
+     // Este número depende de la cantidad de archivos/hilos que quieras manejar
     pthread_t threads[numThreads];
     ThreadData threadData[numThreads];
     int i = 0;
     // Leer el directorio y comprimir cada archivo
     while ((entry = readdir(dp))) {
-        unsigned char byte = 0;
-        int nBits = 0;
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             continue;
         }
@@ -189,8 +188,6 @@ void compress(const char* directoryPath, FILE *compress) {
         // Obtener el nombre del archivo
         const char *fileName = strrchr(filePath, '/') ? strrchr(filePath, '/') + 1 : filePath;
 
-        // Escribir el tamaño del nombre del archivo
-        int fileNameLength = strlen(fileName);
         // Obtener el tamaño del archivo original
         threadData[i].filePath = (char *)malloc(strlen(filePath) + 1);  
         strcpy(threadData[i].filePath, filePath);
@@ -228,7 +225,7 @@ void processFile(const char *filePath, Node **list) {
     cant++;
     CountCharacter(list, character);
   }while (1);
-  indexC++;
+  numThreads++;
   fclose(file);
 }
 
@@ -352,6 +349,8 @@ int main(int argc, char *argv[]){
         return 1;
     }
 
+
+    fwrite(&numThreads, sizeof(int), 1, compressFile);
     fwrite(&fileLength, sizeof(long int), 1, compressFile);
     int countElements = 0;
     Table *t = table;  

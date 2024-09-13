@@ -29,6 +29,8 @@ typedef struct {
     unsigned char *compressedData; // Datos comprimidos (arreglo dinámico)
 } Book;
 
+int size = 0;
+
 void createTree(Node *current, Node *newNode, Node *tree, FILE *fi, int elements);
 void decompressBook(Node *tree, const char *directory, const char *title, unsigned long totalCharacters, unsigned long compressedSize, unsigned char *compressedData);
 Node *rebuildHuffmanTree(FILE *fi, int numElements);
@@ -53,9 +55,7 @@ void decompressBook(Node *tree, const char *directory, const char *title, unsign
         return;
     }
 
-    // Recorrer el contenido comprimido y descomprimir usando el árbol de Huffman
-    unsigned char bitBuffer = 0;
-    int bitsInBuffer = 0;
+    
     Node *current = tree;
     int cantBook = totalCharacters;
 
@@ -90,6 +90,8 @@ void decompress(const char *compressedFilePath, const char *outputDirectory) {
         return;
     }
 
+    fread(&size, sizeof(int), 1, fi);
+
     // Leer la cantidad total de caracteres en el archivo comprimido
     long int totalCharacters;
     fread(&totalCharacters, sizeof(long int), 1, fi);
@@ -104,11 +106,8 @@ void decompress(const char *compressedFilePath, const char *outputDirectory) {
     // Crear el directorio de salida si no existe
     mkdir(outputDirectory, 0777);
 
-    // Leer el número de libros
-    int numBooks = 97;
-
     // Crear un segmento de memoria compartida para almacenar los libros
-    int shmId = shmget(IPC_PRIVATE, numBooks * sizeof(Book), IPC_CREAT | 0666);
+    int shmId = shmget(IPC_PRIVATE, size * sizeof(Book), IPC_CREAT | 0666);
     if (shmId < 0) {
         perror("Error creating shared memory");
         exit(1);
@@ -117,7 +116,7 @@ void decompress(const char *compressedFilePath, const char *outputDirectory) {
     // Adjuntar el segmento de memoria compartida
     Book *books = (Book *)shmat(shmId, NULL, 0);
 
-    for (int i = 0; i < numBooks; i++) {
+    for (int i = 0; i < size; i++) {
         unsigned int titleLength;
         fread(&titleLength, sizeof(unsigned int), 1, fi);
 
@@ -136,7 +135,7 @@ void decompress(const char *compressedFilePath, const char *outputDirectory) {
     }
 
     // Crear los procesos hijos
-    for (int i = 0; i < numBooks; i++) {
+    for (int i = 0; i < size; i++) {
         pid_t pid = fork();
 
         if (pid == 0) {
@@ -148,7 +147,7 @@ void decompress(const char *compressedFilePath, const char *outputDirectory) {
     }
 
     // Esperar a que todos los hijos terminen
-    for (int i = 0; i < numBooks; i++) {
+    for (int i = 0; i < size; i++) {
         wait(NULL);
     }
 
@@ -203,9 +202,6 @@ Node *rebuildHuffmanTree(FILE *fi, int numElements) {
 }
 
 int main(int argc, char* argv[]) {
-    Node *tree;
-    long int characters;
-    int elements;
     char *fileName;
     char *directory;
 
@@ -242,6 +238,6 @@ int main(int argc, char* argv[]) {
 
     end = clock();
     cpuTimeUsed = ((double)(end - start)) / CLOCKS_PER_SEC;
-    printf("Concurrent Huffman decompression took: %f seconds\n", cpuTimeUsed);
+    printf("Parallel Huffman decompression took: %f seconds\n", cpuTimeUsed);
     return 0;
 }

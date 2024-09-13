@@ -23,6 +23,7 @@ typedef struct {
 
 extern Table *table;
 long int fileLength = 0;
+int size = 0;
 
 void processFile(const char *filePath, Node **list) {
   FILE *file = fopen(filePath, "r");
@@ -66,7 +67,7 @@ void processDirectory(const char *directoryPath, Node** list) {
 
         // Llama a processFile con la ruta completa
         processFile(filePath, list);
-
+        size++;
         //printf("Process: %s\n", entry->d_name);
     }
 
@@ -325,6 +326,8 @@ int main(int argc, char *argv[]){
     // Realizar la compresión (incluyendo los forks y procesos hijos)
     compress(directory);
 
+    fwrite(&size, sizeof(int), 1, compressFile);
+
     // Escribir información de compresión en el archivo
     fwrite(&fileLength, sizeof(long int), 1, compressFile);
     int countElements = 0;
@@ -343,9 +346,7 @@ int main(int argc, char *argv[]){
         t = t->next;
     }
 
-    // Apendizar los archivos temporales al archivo principal
-    int numFiles = 97;
-    appendTemporaryFilesToMain(numFiles, compressFile);
+    appendTemporaryFilesToMain(size, compressFile);
 
     // Cerrar el archivo comprimido
     fclose(compressFile);

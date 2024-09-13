@@ -9,6 +9,8 @@
 
 #define DEBUG printf("Aqui\n");
 
+int size = 0;
+
 typedef struct tree{
     unsigned char symbol;
     unsigned long int bits;
@@ -259,6 +261,7 @@ int main(int argc, char* argv[]){
     tree->right = tree->left = NULL;
 
     FILE *fi = fopen(fileName, "rb");
+    fread(&size, sizeof(int), 1, fi);
     fread(&characters, sizeof(long int), 1, fi);
     fread(&elements, sizeof(int), 1, fi);
     

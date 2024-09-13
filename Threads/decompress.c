@@ -63,10 +63,6 @@ void decompressBook(ThreadParams *threadParams) {
         perror("Error creating the output file");
         return;
     }
-
-    // Recorrer el contenido comprimido y descomprimir usando el árbol de Huffman
-    unsigned char bitBuffer = 0;
-    int bitsInBuffer = 0;
     Node *current = threadParams->tree;
     int cantBook = threadParams->totalCharacters;
 
@@ -101,6 +97,9 @@ void decompress(const char *compressedFilePath, const char *outputDirectory) {
         return;
     }
 
+    int numBooks = 0;
+    fread(&numBooks, sizeof(int), 1, fi);
+
     // Leer la cantidad total de caracteres en el archivo comprimido
     long int totalCharacters;
     fread(&totalCharacters, sizeof(long int), 1, fi);
@@ -115,7 +114,7 @@ void decompress(const char *compressedFilePath, const char *outputDirectory) {
     // Crear el directorio de salida si no existe
     mkdir(outputDirectory, 0777);
 
-    int numBooks = 97;
+    
     
     pthread_t threads[numBooks];
     ThreadParams threadParams[numBooks];
@@ -199,9 +198,6 @@ Node *rebuildHuffmanTree(FILE *fi, int numElements) {
 }
 
 int main(int argc, char* argv[]) {
-    Node *tree;
-    long int characters;
-    int elements;
     char *fileName;
     char *directory;
 

@@ -10,9 +10,13 @@
 #include <sys/time.h>
 
 #define DEBUG printf("Aqui\n");
+#define ARRAY_LONG 64
 
-unsigned int characters[97];
+unsigned int *characters = NULL;
+//unsigned int characters[97];
 int indexC = 0;
+int arrayMax = 64;
+int size = 0;
 void CountCharacter(Node **list, unsigned char character);
 
 // Global variables
@@ -36,7 +40,19 @@ void processFile(const char *filePath, Node **list) {
     cant++;
     CountCharacter(list, character);
   }while (1);
+  printf("size: %i\n", size);
+  if(size >= arrayMax){
+    arrayMax *= 2;
+    characters = realloc(characters, sizeof(unsigned int) * arrayMax);
+    //printf("arrayMax: %i\n", arrayMax);
+    if (!characters) {
+        printf("Error reallocating memory for characters array\n");
+        fclose(file);
+        exit(1); // Termina el programa si hay error
+    }
+  }
   characters[indexC] = cant;
+  size++;
   indexC++;
   fclose(file);
 }
@@ -155,7 +171,7 @@ int main(int argc, char *argv[]) {
   Node *Tree;
   char *fileName;
   char *directory;
-
+  characters = malloc(sizeof(unsigned int) * arrayMax);
 
   if(argc > 3){
     printf("Expecting less arguments\n");
@@ -207,8 +223,8 @@ int main(int argc, char *argv[]) {
       return 1;
   }
 
-    
-
+  
+  fwrite(&size, sizeof(int), 1, compressFile);
   // lenght of file
   fwrite(&fileLength, sizeof(long int), 1, compressFile);
 
@@ -224,6 +240,7 @@ int main(int argc, char *argv[]) {
 
   // Write the number of elements in the table
   fwrite(&countElements, sizeof(int), 1, compressFile);
+
 
   // Save the table
   t = table; 
@@ -243,6 +260,7 @@ int main(int argc, char *argv[]) {
   //printTable(table);
   destroyTable(table); // Input: Table, Output: None, Function: Destroys it to
                        // free memory
+  free(characters);
   
   gettimeofday(&end, NULL);
   elapsedTime = (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1000000.0;
