@@ -91,6 +91,21 @@ Paso 1: Descargar el proyecto debo hacerlo en el siguiente enlace: https://githu
 Paso 2: Acceda a un entorno Linux
 
 Paso 3: Corra el comando ./install.sh en la terminal dentro del directorio del proyecto antes de ejecutar los ejecutables de compresión de diversos tipos (Serial, Paralelo, Concurrente) para instalar make y gcc
+```c
+./install.sh
+```
+
+Paso 4: Para COMPRIMIR, entre a la carpeta de la implementación que desea utilizar (Serial, Paralelo, Concurrente) se debe enviar por parámetro el nombre del directorio que se desea comprimir, y el nombre del archivo de salido binario. De la siguiente manera
+
+```c
+./compress.c ../<nombre del directorio> <nombre del archivo .bin>
+```
+
+Paso 5: Para DESCOMPRIMIR, se debe pasar por parámetro el archivo binario anteriormente creado y el nombre del directorio donde se desea guardar todo el archivo descomprimido.
+
+```c
+./decompress.c <nombre del archivo .bin> <nombre del directorio> 
+```
 
 ## Créditos
 
