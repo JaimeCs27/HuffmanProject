@@ -253,9 +253,13 @@ int main(int argc, char* argv[]){
     } else {
         perror("Error creating the directory");
     }
-    clock_t start, end;
-    double cpuTimeUsed;
-    start = clock();
+    // Variables para medir tiempo
+    struct timeval start, end;
+    double elapsedTime;
+
+    // Obtener el tiempo de inicio
+    gettimeofday(&start, NULL);
+
     tree = (Node *)malloc(sizeof(Node));
     tree->symbol = 0;
     tree->right = tree->left = NULL;
@@ -275,8 +279,14 @@ int main(int argc, char* argv[]){
     decompress(current, newNode, tree, fi, characters, directory);
     fclose(fi);
     deleteTree(tree);
-    end = clock();
-    cpuTimeUsed = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("Serial huffman compression took: %f seconds\n", cpuTimeUsed);
+
+
+     // Obtener el tiempo de finalización
+    gettimeofday(&end, NULL);
+
+    // Calcular el tiempo transcurrido en segundos
+    elapsedTime = (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1000000.0;
+
+    printf("Serial huffman compression took: %f seconds\n", elapsedTime);
 }
 

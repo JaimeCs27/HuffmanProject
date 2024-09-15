@@ -230,14 +230,21 @@ int main(int argc, char* argv[]) {
         mkdir(directory, 0700);
     }
 
-    clock_t start, end;
-    double cpuTimeUsed;
-    start = clock();
+    // Variables para medir tiempo
+    struct timeval start, end;
+    double elapsedTime;
+
+    // Obtener el tiempo de inicio
+    gettimeofday(&start, NULL);
 
     decompress(fileName, directory);
 
-    end = clock();
-    cpuTimeUsed = ((double)(end - start)) / CLOCKS_PER_SEC;
-    printf("Parallel Huffman decompression took: %f seconds\n", cpuTimeUsed);
+     // Obtener el tiempo de finalización
+    gettimeofday(&end, NULL);
+
+    // Calcular el tiempo transcurrido en segundos
+    elapsedTime = (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1000000.0;
+    
+    printf("Parallel Huffman decompression took: %f seconds\n", elapsedTime);
     return 0;
 }
