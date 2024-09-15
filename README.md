@@ -86,7 +86,7 @@ El algoritmo concurrente, sería el siguiente:
 5. Guardamos en el archivo binario, la cantidad de caracteres totales, cantidad de elementos en la tabla y guardamos la tabla que se generó.
 
 ## Compilación
-
+Paso 1: Descargar el proyecto debo hacerlo en el siguiente enlace: https://github.com/JaimeCs27/HuffmanProject
 
 ## Créditos
 
