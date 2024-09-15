@@ -287,6 +287,6 @@ int main(int argc, char* argv[]){
     // Calcular el tiempo transcurrido en segundos
     elapsedTime = (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1000000.0;
 
-    printf("Serial huffman compression took: %f seconds\n", elapsedTime);
+    printf("Serial huffman decompression took: %f seconds\n", elapsedTime);
 }
 

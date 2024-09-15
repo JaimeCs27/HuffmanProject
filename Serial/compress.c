@@ -40,7 +40,7 @@ void processFile(const char *filePath, Node **list) {
     cant++;
     CountCharacter(list, character);
   }while (1);
-  printf("size: %i\n", size);
+  //printf("size: %i\n", size);
   if(size >= arrayMax){
     arrayMax *= 2;
     characters = realloc(characters, sizeof(unsigned int) * arrayMax);
