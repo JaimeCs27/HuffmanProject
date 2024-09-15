@@ -88,6 +88,10 @@ El algoritmo concurrente, sería el siguiente:
 ## Compilación
 Paso 1: Descargar el proyecto debo hacerlo en el siguiente enlace: https://github.com/JaimeCs27/HuffmanProject
 
+Paso 2: Acceda a un entorno Linux, ya que es necesario para compilar correctamente el proyecto
+
+Paso 3: Corra el comando ./install.sh en la terminal dentro del directorio del proyecto antes de ejecutar los ejecutables de compresión de diversos tipos (Serial, Paralelo, Concurrente) para instalar make y gcc
+
 ## Créditos
 
 - Jaime Cabezas Segura
