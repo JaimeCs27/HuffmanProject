@@ -7,7 +7,7 @@ COMPRESS_SRCS = compress.c Tabla.c Nodos.c
 DECOMPRESS_SRCS = decompress.c
 
 COMPRESS_OBJS = $(COMPRESS_SRCS:.c=.o)
-DECOMPRESS_OBJS = $(DECOMPRESS_SRCS:.o=.o)
+DECOMPRESS_OBJS = $(DECOMPRESS_SRCS:.c=.o)
 
 # Nombre de los ejecutables
 COMPRESS_TARGET = compress
