@@ -85,6 +85,9 @@ El algoritmo concurrente, sería el siguiente:
 4. Se crea la tabla de Huffman recorriendo el arbol creado.
 5. Guardamos en el archivo binario, la cantidad de caracteres totales, cantidad de elementos en la tabla y guardamos la tabla que se generó.
 
+## Compilación
+
+
 ## Créditos
 
 - Jaime Cabezas Segura
