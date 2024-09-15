@@ -86,27 +86,24 @@ El algoritmo concurrente, sería el siguiente:
 5. Guardamos en el archivo binario, la cantidad de caracteres totales, cantidad de elementos en la tabla y guardamos la tabla que se generó.
 
 ## Compilación
-Paso 1: Descargar el proyecto debo hacerlo en el siguiente enlace: https://github.com/JaimeCs27/HuffmanProject
+Paso 1: Descargue el proyecto, debe hacerlo en el siguiente enlace: https://github.com/JaimeCs27/HuffmanProject y asegurarse de estar en un entorno Linux para ejecutarlo
 
-Paso 2: Acceda a un entorno Linux
-
-Paso 3: Corra el comando ./install.sh en la terminal dentro del directorio del proyecto antes de ejecutar los ejecutables de compresión de diversos tipos (Serial, Paralelo, Concurrente) para instalar make y gcc
+Paso 2: Corra el comando ./install.sh en la terminal dentro del directorio del proyecto para instalar make y gcc
 ```c
 ./install.sh
 ```
-Paso 4: Entre a la carpeta de la implementación que desea utilizar (Serial, Paralelo, Concurrente) e ejecute el make
-
+Paso 3: Entre a la carpeta de la implementación que desea utilizar (Serial, Paralelo, Concurrente) e ejecute el makefile
 ```c
 make
 ```
 
-Paso 5: Para COMPRIMIR se debe enviar por parámetro el nombre del directorio que se desea comprimir, y el nombre del archivo de salido binario. De la siguiente manera
+Paso 4: Para COMPRIMIR se debe enviar por parámetro el nombre del directorio que se desea comprimir, y el nombre del archivo de salido binario. De la siguiente manera
 
 ```c
 ./compress.c ../<nombre del directorio> <nombre del archivo .bin>
 ```
 
-Paso 6: Para DESCOMPRIMIR, se debe pasar por parámetro el archivo binario anteriormente creado y el nombre del directorio donde se desea guardar todo el archivo descomprimido.
+Paso 5: Para DESCOMPRIMIR, se debe pasar por parámetro el archivo binario anteriormente creado y el nombre del directorio donde se desea guardar todo el archivo descomprimido.
 
 ```c
 ./decompress.c <nombre del archivo .bin> <nombre del directorio> 
