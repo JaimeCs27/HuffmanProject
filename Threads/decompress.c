@@ -7,6 +7,7 @@
 #include <dirent.h>
 #include <time.h>
 #include <pthread.h>
+#include <sys/time.h>
 
 #define DEBUG printf("Aqui\n");
 

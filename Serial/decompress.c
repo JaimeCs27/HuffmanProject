@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <time.h>
+#include <sys/time.h>
 
 #define DEBUG printf("Aqui\n");
 

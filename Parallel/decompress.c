@@ -9,6 +9,7 @@
 #include <sys/shm.h>
 #include <sys/ipc.h>
 #include <sys/wait.h>
+#include <sys/time.h>
 
 #define DEBUG printf("Aqui\n");
 
