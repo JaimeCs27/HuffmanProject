@@ -94,14 +94,19 @@ Paso 3: Corra el comando ./install.sh en la terminal dentro del directorio del p
 ```c
 ./install.sh
 ```
+Paso 4: Entre a la carpeta de la implementación que desea utilizar (Serial, Paralelo, Concurrente) e ejecute el make
 
-Paso 4: Para COMPRIMIR, entre a la carpeta de la implementación que desea utilizar (Serial, Paralelo, Concurrente) se debe enviar por parámetro el nombre del directorio que se desea comprimir, y el nombre del archivo de salido binario. De la siguiente manera
+```c
+make
+```
+
+Paso 5: Para COMPRIMIR se debe enviar por parámetro el nombre del directorio que se desea comprimir, y el nombre del archivo de salido binario. De la siguiente manera
 
 ```c
 ./compress.c ../<nombre del directorio> <nombre del archivo .bin>
 ```
 
-Paso 5: Para DESCOMPRIMIR, se debe pasar por parámetro el archivo binario anteriormente creado y el nombre del directorio donde se desea guardar todo el archivo descomprimido.
+Paso 6: Para DESCOMPRIMIR, se debe pasar por parámetro el archivo binario anteriormente creado y el nombre del directorio donde se desea guardar todo el archivo descomprimido.
 
 ```c
 ./decompress.c <nombre del archivo .bin> <nombre del directorio> 
