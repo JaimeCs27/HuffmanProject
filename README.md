@@ -88,5 +88,5 @@ El algoritmo concurrente, sería el siguiente:
 ## Créditos
 
 - Jaime Cabezas Segura
-- Sebastián Lopez Villavicencio
+- Sebastián López Villavicencio
 - Natasha Calderón Rojas
