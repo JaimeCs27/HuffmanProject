@@ -2,22 +2,11 @@
 Este proyecto implementara el algoritmo de compresion y descompresion de Huffman, utilizando 3 métodos distintos. También se tomará el tiempo de ejecución de cada método utilizado para realizar una comparación de tiempo de ejecución.
 
 ## Tabla de Contenidos
- - [Instalación](#instalacion)
  - [Implementacion](#Implementación)
  - [Compilación](#Compilación)
  - [Uso](#Uso)
  - [Créditos](#Créditos)
 
-## Instalación
-
-Para instalar las librerías necesarias para ejecutar el programa nada más se debe correr el script de instalación que se provee
-En la raíz de la carpeta, hay un archivo .sh el cual para ejecutarlo usaríamos el siguiente comando
-
-```console
- foo@bar~:sudo ./install.sh
-```
-
-Se le pedirá la contraseña del usuario, y después de ingresarla, presionen enter
 
 ## Implementación
 
